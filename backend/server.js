@@ -1,0 +1,33 @@
+//server.js
+
+//import required packages
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const connectDB = require('./config/db');
+const userRoutes = require('./routes/userRoutes');
+const supplierRoutes = require('./routes/supplierRoutes');
+const customerRoutes = require('./routes/customerRoutes');
+const transactionRoutes = require('./routes/transactionRoutes');
+//connect to the database
+connectDB();
+
+//initialize the express app
+const app = express();
+
+//set the port from environment variable or default to 5000
+
+const PORT = process.env.PORT || 5000;
+
+// Middleware
+app.use(cors()); // Enable CORS for all routes
+app.use(express.json()); // Parse JSON request bodies
+app.use('/api/suppliers', supplierRoutes);
+app.use('/api/customers', customerRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/transactions', transactionRoutes);
+//start the server and listen for incoming requests
+app.listen(PORT,()=>{
+    console.log(`Server is running on port ${PORT}`);
+});
+

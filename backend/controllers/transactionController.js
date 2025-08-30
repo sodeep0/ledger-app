@@ -78,13 +78,63 @@ const getTransactions = async (req, res) => {
     const limit = Math.min(Math.max(parseInt(req.query.limit || '10', 10), 1), 100);
     const skip = (page - 1) * limit;
 
+    // Build filter object
+    let filter = { user: req.user._id };
+
+    // Search filter
+    if (req.query.search) {
+      const searchRegex = new RegExp(req.query.search, 'i');
+      filter.$or = [
+        { description: searchRegex },
+        { type: searchRegex }
+      ];
+    }
+
+    // Date range filter
+    if (req.query.dateRange && req.query.dateRange !== 'all') {
+      const now = new Date();
+      let startDate = new Date();
+      
+      switch (req.query.dateRange) {
+        case 'today':
+          startDate.setHours(0, 0, 0, 0);
+          break;
+        case 'week':
+          startDate.setDate(now.getDate() - 7);
+          break;
+        case 'month':
+          startDate.setMonth(now.getMonth() - 1);
+          break;
+        case 'quarter':
+          startDate.setMonth(now.getMonth() - 3);
+          break;
+        case 'year':
+          startDate.setFullYear(now.getFullYear() - 1);
+          break;
+      }
+      
+      filter.date = { $gte: startDate };
+    }
+
+    // Party type filter
+    if (req.query.partyType && req.query.partyType !== 'all') {
+      filter.partyModel = req.query.partyType;
+    }
+
+    // Specific party filter
+    if (req.query.partyId && req.query.partyId !== 'all') {
+      filter.party = req.query.partyId;
+    }
+
+
+
     const [items, total] = await Promise.all([
-      Transaction.find({ user: req.user._id })
+      Transaction.find(filter)
         .populate('party', 'name balance')
         .sort({ date: -1, createdAt: -1, _id: -1 })
         .skip(skip)
         .limit(limit),
-      Transaction.countDocuments({ user: req.user._id }),
+      Transaction.countDocuments(filter),
     ]);
 
     const totalPages = Math.ceil(total / limit) || 1;
@@ -98,7 +148,8 @@ const getTransactions = async (req, res) => {
       hasPrevPage: page > 1,
     });
   } catch (error) {
-    res.status(500).json({ message: 'Server Error' });
+    console.error('Error in getTransactions:', error);
+    res.status(500).json({ message: 'Server Error', error: error.message });
   }
 };
 

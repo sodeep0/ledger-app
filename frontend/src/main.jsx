@@ -9,7 +9,9 @@ import './index.css';
 import LoginPage from './pages/LoginPage.jsx';
 import RegisterPage from './pages/RegisterPage.jsx';
 import DashboardPage from './pages/DashboardPage.jsx';
-import ProtectedRoute from './components/ProtectedRoute.jsx'; // <-- Import
+import PartiesPage from './pages/PartiesPage.jsx';
+import TransactionsPage from './pages/TransactionsPage.jsx';
+import ProtectedRoute from './components/ProtectedRoute.jsx';
 
 // Define the routes
 const router = createBrowserRouter([
@@ -21,7 +23,17 @@ const router = createBrowserRouter([
           <ProtectedRoute>
             <DashboardPage />
           </ProtectedRoute>
-        ) }, // Default page
+        ) },
+      { path: 'parties', element: (
+          <ProtectedRoute>
+            <PartiesPage />
+          </ProtectedRoute>
+        ) },
+      { path: 'transactions', element: (
+          <ProtectedRoute>
+            <TransactionsPage />
+          </ProtectedRoute>
+        ) },
       { path: 'login', element: <LoginPage /> },
       { path: 'register', element: <RegisterPage /> },
     ],

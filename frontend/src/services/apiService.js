@@ -25,11 +25,21 @@ api.interceptors.request.use((config) => {
 });
 
 // --- Define API functions ---
+
+// Supplier functions
 export const createSupplier = (supplierData) => api.post('suppliers', supplierData);
-export const createCustomer = (customerData) => api.post('customers', customerData);
-export const createTransaction = (transactionData) => api.post('transactions', transactionData);
-export const deleteTransaction = (transactionId) => api.delete(`transactions/${transactionId}`);
-export const updateTransaction = (transactionId, transactionData) => api.put(`transactions/${transactionId}`, transactionData);
 export const getSuppliers = () => api.get('suppliers');
+export const updateSupplier = (id, supplierData) => api.put(`suppliers/${id}`, supplierData);
+export const deleteSupplier = (id) => api.delete(`suppliers/${id}`);
+
+// Customer functions
+export const createCustomer = (customerData) => api.post('customers', customerData);
 export const getCustomers = () => api.get('customers');
+export const updateCustomer = (id, customerData) => api.put(`customers/${id}`, customerData);
+export const deleteCustomer = (id) => api.delete(`customers/${id}`);
+
+// Transaction functions
+export const createTransaction = (transactionData) => api.post('transactions', transactionData);
 export const getTransactions = (params) => api.get('transactions', { params });
+export const updateTransaction = (transactionId, transactionData) => api.put(`transactions/${transactionId}`, transactionData);
+export const deleteTransaction = (transactionId) => api.delete(`transactions/${transactionId}`);

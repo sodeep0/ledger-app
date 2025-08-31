@@ -4,9 +4,9 @@ import { Navigate } from 'react-router-dom';
 const ProtectedRoute = ({ children }) => {
   const user = JSON.parse(localStorage.getItem('user'));
 
-  if (!user) {
-    // If no user is logged in, redirect to the login page
-    return <Navigate to="/login" />;
+  // If no user or no token, redirect to login
+  if (!user || !user.token) {
+    return <Navigate to="/login" replace />;
   }
 
   // If user is logged in, show the page

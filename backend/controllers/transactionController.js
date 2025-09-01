@@ -199,6 +199,189 @@ const updateTransaction = async (req, res) => {
     } finally {
         session.endSession();
     }
+};
+
+const getTransactionSummaries = async (req, res) => {
+  try {
+    const { period } = req.query;
+    
+    // Build date filter based on period
+    let dateFilter = {};
+    if (period && period !== 'all-time') {
+      const now = new Date();
+      let startDate = new Date();
+      
+      switch (period) {
+        case 'today':
+          startDate.setHours(0, 0, 0, 0);
+          const endOfDay = new Date(startDate);
+          endOfDay.setHours(23, 59, 59, 999);
+          dateFilter = { $gte: startDate, $lte: endOfDay };
+          break;
+        case 'this-week':
+          const day = startDate.getDay();
+          const diff = (day === 0 ? 6 : day - 1); // Start on Monday
+          startDate.setDate(startDate.getDate() - diff);
+          startDate.setHours(0, 0, 0, 0);
+          const endOfWeek = new Date(startDate);
+          endOfWeek.setDate(startDate.getDate() + 6);
+          endOfWeek.setHours(23, 59, 59, 999);
+          dateFilter = { $gte: startDate, $lte: endOfWeek };
+          break;
+        case 'this-year':
+          startDate = new Date(now.getFullYear(), 0, 1);
+          const endOfYear = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
+          dateFilter = { $gte: startDate, $lte: endOfYear };
+          break;
+      }
+    }
+
+    const filter = { 
+      user: req.user._id,
+      ...(Object.keys(dateFilter).length > 0 && { date: dateFilter })
+    };
+
+    // Get aggregated summaries
+    const summaries = await Transaction.aggregate([
+      { $match: filter },
+      {
+        $group: {
+          _id: '$type',
+          totalAmount: { $sum: '$amount' },
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    // Get top customers by sales
+    const topCustomers = await Transaction.aggregate([
+      { 
+        $match: { 
+          ...filter, 
+          type: 'Sale',
+          partyModel: 'Customer'
+        } 
+      },
+      {
+        $group: {
+          _id: '$party',
+          totalSales: { $sum: '$amount' },
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { totalSales: -1 } },
+      { $limit: 5 },
+      {
+        $lookup: {
+          from: 'customers',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'customer'
+        }
+      },
+      {
+        $project: {
+          name: { $arrayElemAt: ['$customer.name', 0] },
+          totalSales: 1,
+          count: 1
+        }
+      }
+    ]);
+
+    // Get top suppliers by purchases
+    const topSuppliers = await Transaction.aggregate([
+      { 
+        $match: { 
+          ...filter, 
+          type: 'Purchase',
+          partyModel: 'Supplier'
+        } 
+      },
+      {
+        $group: {
+          _id: '$party',
+          totalPurchases: { $sum: '$amount' },
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { totalPurchases: -1 } },
+      { $limit: 5 },
+      {
+        $lookup: {
+          from: 'suppliers',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'supplier'
+        }
+      },
+      {
+        $project: {
+          name: { $arrayElemAt: ['$supplier.name', 0] },
+          totalPurchases: 1,
+          count: 1
+        }
+      }
+    ]);
+
+    // Get weekly sales data for the current week
+    const weekRange = getWeekRange();
+    const weeklySales = await Transaction.aggregate([
+      {
+        $match: {
+          user: req.user._id,
+          type: 'Sale',
+          date: { $gte: weekRange.start, $lte: weekRange.end }
+        }
+      },
+      {
+        $group: {
+          _id: {
+            $dayOfWeek: '$date'
+          },
+          totalSales: { $sum: '$amount' }
+        }
+      }
+    ]);
+
+    // Convert to day names and fill missing days
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const salesByDay = Array(7).fill(0);
+    weeklySales.forEach(item => {
+      const dayIndex = item._id === 0 ? 6 : item._id - 1; // Convert Sunday=1 to Sunday=0
+      salesByDay[dayIndex] = item.totalSales;
+    });
+
+    const weeklySalesData = days.map((day, index) => ({
+      day,
+      sales: salesByDay[index]
+    }));
+
+    res.json({
+      summaries,
+      topCustomers,
+      topSuppliers,
+      weeklySalesData
+    });
+
+  } catch (error) {
+    console.error('Error in getTransactionSummaries:', error);
+    res.status(500).json({ message: 'Server Error', error: error.message });
+  }
+};
+
+// Helper function to get current week range
+const getWeekRange = () => {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const day = today.getDay();
+  const diff = (day === 0 ? 6 : day - 1); // Start on Monday
+  const start = new Date(today);
+  start.setDate(today.getDate() - diff);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  end.setHours(23, 59, 59, 999);
+  return { start, end };
 }; 
 
-module.exports = { createTransaction, deleteTransaction, getTransactions , updateTransaction };
+module.exports = { createTransaction, deleteTransaction, getTransactions, updateTransaction, getTransactionSummaries };

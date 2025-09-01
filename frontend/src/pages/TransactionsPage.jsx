@@ -79,6 +79,10 @@ const TransactionsPage = () => {
   const [searchInput, setSearchInput] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
 
+  // New state for delete confirmation modal
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [selectedTransactionId, setSelectedTransactionId] = useState(null);
+
   // Debounce effect for search input
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -148,16 +152,28 @@ const TransactionsPage = () => {
     setIsModalOpen(true);
   }, []);
   
-  const handleDelete = useCallback(async (transactionId) => {
-    if (!window.confirm('Are you sure you want to delete this transaction?')) return;
+  const handleDelete = useCallback((transactionId) => {
+    setSelectedTransactionId(transactionId);
+    setIsDeleteModalOpen(true);
+  }, []);
+
+  const confirmDelete = useCallback(async () => {
+    if (!selectedTransactionId) return;
     try {
-      await deleteTransaction(transactionId);
+      await deleteTransaction(selectedTransactionId);
       fetchData(); // Refetch data after successful delete
+      setIsDeleteModalOpen(false);
+      setSelectedTransactionId(null);
     } catch (error) {
       console.error('Failed to delete transaction', error);
       alert('Failed to delete transaction. Please try again.');
     }
-  }, [fetchData]);
+  }, [fetchData, selectedTransactionId]);
+
+  const handleCloseDeleteModal = () => {
+    setIsDeleteModalOpen(false);
+    setSelectedTransactionId(null);
+  };
   
   const handleTransactionSuccess = useCallback(() => {
     setIsModalOpen(false);
@@ -188,13 +204,7 @@ const TransactionsPage = () => {
     document.body.removeChild(link);
   }, [transactions]);
 
-  const summary = useMemo(() => {
-    const totalAmount = transactions.reduce((sum, t) => sum + t.amount, 0);
-    return {
-      totalTransactions: totalTransactions, // Use total from server for accuracy
-      totalAmount,
-    };
-  }, [transactions, totalTransactions]);
+  
   
   const allParties = useMemo(() => [
     ...suppliers.map(s => ({ ...s, type: 'Supplier' })),
@@ -420,18 +430,6 @@ const TransactionsPage = () => {
        </div>
   
       {/* Summary Footer */}
-      <div className="mt-6 bg-white p-6 rounded-lg shadow">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="text-center">
-            <p className="text-sm font-medium text-gray-500">Total Transactions</p>
-            <p className="text-2xl font-bold text-gray-900">{summary.totalTransactions}</p>
-          </div>
-          <div className="text-center">
-            <p className="text-sm font-medium text-gray-500">Total Amount</p>
-            <p className="text-2xl font-bold text-gray-900">${summary.totalAmount.toLocaleString()}</p>
-          </div>
-        </div>
-      </div>
 
       {/* Transaction Modal */}
       <Modal
@@ -448,6 +446,31 @@ const TransactionsPage = () => {
           onSuccess={handleTransactionSuccess}
           initialData={editingTransaction}
         />
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={isDeleteModalOpen}
+        onClose={handleCloseDeleteModal}
+        title="Confirm Deletion"
+      >
+        <div className="p-4">
+          <p className="text-gray-700 mb-4">Are you sure you want to delete this transaction? This action cannot be undone.</p>
+          <div className="flex justify-end space-x-3">
+            <button
+              onClick={handleCloseDeleteModal}
+              className="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={confirmDelete}
+              className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

@@ -43,3 +43,32 @@ export const createTransaction = (transactionData) => api.post('transactions', t
 export const getTransactions = (params) => api.get('transactions', { params });
 export const updateTransaction = (transactionId, transactionData) => api.put(`transactions/${transactionId}`, transactionData);
 export const deleteTransaction = (transactionId) => api.delete(`transactions/${transactionId}`);
+
+// Get all transactions with pagination
+export const getAllTransactions = async (params = {}) => {
+  const allTransactions = [];
+  let page = 1;
+  let hasMore = true;
+  
+  while (hasMore) {
+    const response = await api.get('transactions', { 
+      params: { 
+        ...params, 
+        page, 
+        limit: 100 // Use max limit per page
+      } 
+    });
+    
+    const { items, hasNextPage } = response.data;
+    allTransactions.push(...items);
+    hasMore = hasNextPage;
+    page++;
+  }
+  
+  return { data: { items: allTransactions, total: allTransactions.length } };
+};
+
+// Get transaction summaries for dashboard
+export const getTransactionSummaries = (period = 'all-time') => api.get('transactions/summaries', { 
+  params: { period } 
+});

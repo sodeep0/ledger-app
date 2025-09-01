@@ -96,21 +96,21 @@ const PartiesPage = () => {
     setIsModalOpen(true);
   };
 
-  const handleDelete = async (partyId) => {
-    if (!window.confirm('Are you sure you want to delete this party?')) return;
+  // const handleDelete = async (partyId) => {
+  //   if (!window.confirm('Are you sure you want to delete this party?')) return;
 
-    try {
-      if (activeTab === 'suppliers') {
-        await deleteSupplier(partyId);
-      } else {
-        await deleteCustomer(partyId);
-      }
-      fetchData();
-    } catch (error) {
-      console.error('Failed to delete party', error);
-      alert('Failed to delete party. Please try again.');
-    }
-  };
+  //   try {
+  //     if (activeTab === 'suppliers') {
+  //       await deleteSupplier(partyId);
+  //     } else {
+  //       await deleteCustomer(partyId);
+  //     }
+  //     fetchData();
+  //   } catch (error) {
+  //     console.error('Failed to delete party', error);
+  //     alert('Failed to delete party. Please try again.');
+  //   }
+  // };
 
   const handleAddNew = () => {
     setEditingParty(null);
@@ -331,12 +331,7 @@ const PartiesPage = () => {
                       >
                         Edit
                       </button>
-                      <button
-                        onClick={() => handleDelete(party._id)}
-                        className="text-gray-600 hover:text-gray-900"
-                      >
-                        Delete
-                      </button>
+                      
                     </td>
                   </tr>
                 ))}

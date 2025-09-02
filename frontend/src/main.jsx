@@ -10,6 +10,7 @@ import LoginPage from './pages/LoginPage.jsx';
 import RegisterPage from './pages/RegisterPage.jsx';
 import DashboardPage from './pages/DashboardPage.jsx';
 import PartiesPage from './pages/PartiesPage.jsx';
+import PartyDetailsPage from './pages/PartyDetailsPage.jsx';
 import TransactionsPage from './pages/TransactionsPage.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import PublicRoute from './components/PublicRoute.jsx';
@@ -30,6 +31,11 @@ const router = createBrowserRouter([
       { path: 'parties', element: (
           <ProtectedRoute>
             <PartiesPage />
+          </ProtectedRoute>
+        ) },
+      { path: 'parties/:partyType/:partyId', element: (
+          <ProtectedRoute>
+            <PartyDetailsPage />
           </ProtectedRoute>
         ) },
       { path: 'transactions', element: (

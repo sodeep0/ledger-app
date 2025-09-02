@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { getSuppliers, getCustomers, createSupplier, createCustomer, updateSupplier, updateCustomer, deleteSupplier, deleteCustomer } from '../services/apiService';
 import Modal from '../components/Modal';
 
 const PartiesPage = () => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('suppliers');
   const [suppliers, setSuppliers] = useState([]);
   const [customers, setCustomers] = useState([]);
@@ -117,6 +119,11 @@ const PartiesPage = () => {
     setFormData({ name: '', contactInfo: '' });
     setFormErrors({});
     setIsModalOpen(true);
+  };
+
+  const handlePartyClick = (party) => {
+    const partyType = activeTab === 'suppliers' ? 'supplier' : 'customer';
+    navigate(`/parties/${partyType}/${party._id}`);
   };
 
   const filteredAndSortedData = () => {
@@ -305,7 +312,7 @@ const PartiesPage = () => {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {data.map((party) => (
-                  <tr key={party._id} className="hover:bg-gray-50">
+                  <tr key={party._id} className="hover:bg-gray-50 cursor-pointer" onClick={() => handlePartyClick(party)}>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">{party.name}</div>
                     </td>
@@ -326,7 +333,10 @@ const PartiesPage = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <button
-                        onClick={() => handleEdit(party)}
+                        onClick={(e) => {
+                          e.stopPropagation(); // Prevent row click when editing
+                          handleEdit(party);
+                        }}
                         className="text-red-600 hover:text-red-900 mr-4"
                       >
                         Edit

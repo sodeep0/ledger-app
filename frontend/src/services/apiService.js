@@ -72,3 +72,11 @@ export const getAllTransactions = async (params = {}) => {
 export const getTransactionSummaries = (period = 'all-time') => api.get('transactions/summaries', { 
   params: { period } 
 });
+
+// Get transactions by party ID
+export const getTransactionsByParty = (partyId, params = {}) => api.get('transactions', { 
+  params: { 
+    partyId: partyId,
+    ...params 
+  } 
+});

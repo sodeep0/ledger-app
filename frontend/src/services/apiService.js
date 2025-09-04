@@ -29,14 +29,22 @@ api.interceptors.request.use((config) => {
 // Supplier functions
 export const createSupplier = (supplierData) => api.post('suppliers', supplierData);
 export const getSuppliers = () => api.get('suppliers');
+export const getSupplierById = (id) => api.get(`suppliers/${id}`);
 export const updateSupplier = (id, supplierData) => api.put(`suppliers/${id}`, supplierData);
 export const deleteSupplier = (id) => api.delete(`suppliers/${id}`);
 
 // Customer functions
 export const createCustomer = (customerData) => api.post('customers', customerData);
 export const getCustomers = () => api.get('customers');
+export const getCustomerById = (id) => api.get(`customers/${id}`);
 export const updateCustomer = (id, customerData) => api.put(`customers/${id}`, customerData);
 export const deleteCustomer = (id) => api.delete(`customers/${id}`);
+
+// Generic party fetcher used by UI (customer or supplier)
+export const getPartyById = (partyType, partyId) => {
+  const base = partyType === 'supplier' ? 'suppliers' : 'customers';
+  return api.get(`${base}/${partyId}`);
+};
 
 // Transaction functions
 export const createTransaction = (transactionData) => api.post('transactions', transactionData);
@@ -79,6 +87,15 @@ export const getTransactionsByParty = (partyId, params = {}) => api.get('transac
     partyId: partyId,
     ...params 
   } 
+});
+
+// Get opening balance for a specific party and page
+export const getOpeningBalance = (partyId, partyModel, params = {}) => api.get('transactions/opening-balance', {
+  params: {
+    partyId,
+    partyModel,
+    ...params
+  }
 });
 
 // Admin / users

@@ -13,7 +13,14 @@ import PartiesPage from './pages/PartiesPage.jsx';
 import PartyDetailsPage from './pages/PartyDetailsPage.jsx';
 import TransactionsPage from './pages/TransactionsPage.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
+import NonAdminApprovedRoute from './components/NonAdminApprovedRoute.jsx';
 import PublicRoute from './components/PublicRoute.jsx';
+import AdminRoute from './components/AdminRoute.jsx';
+import AdminDashboardPage from './pages/AdminDashboardPage.jsx';
+import VerifyPage from './pages/VerifyPage.jsx';
+import ForgotPasswordPage from './pages/ForgotPasswordPage.jsx';
+import VerifyResetPage from './pages/VerifyResetPage.jsx';
+import ResetPasswordPage from './pages/ResetPasswordPage.jsx';
 import { ErrorBoundary, ErrorPage } from './components/ErrorBoundary.jsx';
 
 // Define the routes
@@ -24,24 +31,29 @@ const router = createBrowserRouter([
     errorElement: <ErrorPage />,
     children: [
       { index: true, element: (
-          <ProtectedRoute>
+          <NonAdminApprovedRoute>
             <DashboardPage />
-          </ProtectedRoute>
+          </NonAdminApprovedRoute>
         ) },
       { path: 'parties', element: (
-          <ProtectedRoute>
+          <NonAdminApprovedRoute>
             <PartiesPage />
-          </ProtectedRoute>
+          </NonAdminApprovedRoute>
         ) },
       { path: 'parties/:partyType/:partyId', element: (
-          <ProtectedRoute>
+          <NonAdminApprovedRoute>
             <PartyDetailsPage />
-          </ProtectedRoute>
+          </NonAdminApprovedRoute>
         ) },
       { path: 'transactions', element: (
-          <ProtectedRoute>
+          <NonAdminApprovedRoute>
             <TransactionsPage />
-          </ProtectedRoute>
+          </NonAdminApprovedRoute>
+        ) },
+      { path: 'admin', element: (
+          <AdminRoute>
+            <AdminDashboardPage />
+          </AdminRoute>
         ) },
       { path: 'login', element: (
           <PublicRoute>
@@ -51,6 +63,26 @@ const router = createBrowserRouter([
       { path: 'register', element: (
           <PublicRoute>
             <RegisterPage />
+          </PublicRoute>
+        ) },
+      { path: 'verify', element: (
+          <PublicRoute>
+            <VerifyPage />
+          </PublicRoute>
+        ) },
+      { path: 'forgot-password', element: (
+          <PublicRoute>
+            <ForgotPasswordPage />
+          </PublicRoute>
+        ) },
+      { path: 'forgot-password/verify', element: (
+          <PublicRoute>
+            <VerifyResetPage />
+          </PublicRoute>
+        ) },
+      { path: 'forgot-password/reset', element: (
+          <PublicRoute>
+            <ResetPasswordPage />
           </PublicRoute>
         ) },
       // Catch-all route for undefined pages

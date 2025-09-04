@@ -80,3 +80,8 @@ export const getTransactionsByParty = (partyId, params = {}) => api.get('transac
     ...params 
   } 
 });
+
+// Admin / users
+export const adminListUsers = () => api.get('users');
+export const adminUpdateUserApproval = (id, status) => api.patch(`users/${id}/approval`, { status });
+export const getMyStatus = () => api.get('users/me/status');

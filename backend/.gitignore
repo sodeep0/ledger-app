@@ -1,0 +1,16 @@
+# //.gitignore file for backend directory
+# Ignore node_modules directory
+node_modules/
+# Ignore log files
+*.log
+# Ignore environment variable files
+.env
+# Ignore build output
+dist/
+# Ignore temporary files
+*.tmp
+# Ignore coverage reports
+coverage/
+# Ignore IDE specific files
+.vscode/
+.idea/

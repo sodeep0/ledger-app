@@ -12,6 +12,7 @@ import DashboardPage from './pages/DashboardPage.jsx';
 import PartiesPage from './pages/PartiesPage.jsx';
 import PartyDetailsPage from './pages/PartyDetailsPage.jsx';
 import TransactionsPage from './pages/TransactionsPage.jsx';
+import BatchTransactionsPage from './pages/BatchTransactionsPage.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import NonAdminApprovedRoute from './components/NonAdminApprovedRoute.jsx';
 import PublicRoute from './components/PublicRoute.jsx';
@@ -48,6 +49,11 @@ const router = createBrowserRouter([
       { path: 'transactions', element: (
           <NonAdminApprovedRoute>
             <TransactionsPage />
+          </NonAdminApprovedRoute>
+        ) },
+      { path: 'transactions/batch', element: (
+          <NonAdminApprovedRoute>
+            <BatchTransactionsPage />
           </NonAdminApprovedRoute>
         ) },
       { path: 'admin', element: (

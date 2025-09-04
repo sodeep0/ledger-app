@@ -21,7 +21,19 @@ const getTypeColor = (type) => {
 const TransactionRow = memo(({ transaction, onEdit, onDelete }) => (
   <tr className="hover:bg-gray-50">
     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-      {new Date(transaction.date).toLocaleDateString()}
+      <div>
+        <div className="font-medium">
+          {new Date(transaction.date).toLocaleDateString()}
+        </div>
+        {transaction.createdAt && (
+          <div className="text-xs text-gray-500">
+            {new Date(transaction.createdAt).toLocaleTimeString([], { 
+              hour: '2-digit', 
+              minute: '2-digit' 
+            })}
+          </div>
+        )}
+      </div>
     </td>
     <td className="px-6 py-4 whitespace-nowrap">
       <div className="text-sm font-medium text-gray-900">
@@ -184,16 +196,24 @@ const TransactionsPage = () => {
   }, [fetchData]);
 
   const exportToCSV = useCallback(() => {
-    const headers = ['Date', 'Party Name', 'Type', 'Amount', 'Notes'];
+    const headers = ['Date', 'Time', 'Party Name', 'Type', 'Amount', 'Notes'];
     const csvContent = [
       headers.join(','),
-      ...transactions.map(t => [
-        new Date(t.date).toLocaleDateString(),
-        `"${t.party?.name || ''}"`, // Enclose in quotes to handle commas
-        t.type,
-        t.amount,
-        `"${t.description || ''}"`
-      ].join(','))
+      ...transactions.map(t => {
+        const datePart = new Date(t.date).toLocaleDateString();
+        const timePart = t.createdAt ? new Date(t.createdAt).toLocaleTimeString([], { 
+          hour: '2-digit', 
+          minute: '2-digit' 
+        }) : '';
+        return [
+          datePart,
+          timePart,
+          `"${t.party?.name || ''}"`, // Enclose in quotes to handle commas
+          t.type,
+          t.amount,
+          `"${t.description || ''}"`
+        ].join(',');
+      })
     ].join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -239,6 +259,12 @@ const TransactionsPage = () => {
               className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
             >
               Export
+            </button>
+            <button
+              onClick={() => window.location.assign('/transactions/batch')}
+              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-600 hover:bg-gray-700"
+            >
+              Batch Transactions
             </button>
             <button
               onClick={() => setIsModalOpen(true)}
@@ -332,7 +358,7 @@ const TransactionsPage = () => {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Date
+                  Date & Time
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Party Name

@@ -4,12 +4,32 @@ const Transaction = require('../models/Transaction.js');
 const Customer = require('../models/Customer.js');
 const Supplier = require('../models/Supplier.js');
 
+// --- Helpers ---
+const isValidPartyModel = (partyModel) => partyModel === 'Supplier' || partyModel === 'Customer';
+const isValidType = (type) => ['Purchase', 'Sale', 'Payment Out', 'Payment In'].includes(type);
+const isTypeAllowedForParty = (partyModel, type) => {
+  if (partyModel === 'Supplier') return type === 'Purchase' || type === 'Payment Out';
+  if (partyModel === 'Customer') return type === 'Sale' || type === 'Payment In';
+  return false;
+};
+
 const createTransaction = async (req, res) => {
   const { date, type, party: partyId, partyModel, mode, description, amount } = req.body;
 
   const session = await mongoose.startSession(); // <-- Start session from mongoose
   try {
     session.startTransaction();
+
+    // Validate party model and type alignment
+    if (!isValidPartyModel(partyModel)) {
+      throw new Error('Invalid partyModel. Must be Supplier or Customer');
+    }
+    if (!isValidType(type)) {
+      throw new Error('Invalid transaction type');
+    }
+    if (!isTypeAllowedForParty(partyModel, type)) {
+      throw new Error(`Invalid transaction type '${type}' for ${partyModel}`);
+    }
 
     const party = await (partyModel === 'Supplier' ? Supplier.findById(partyId) : Customer.findById(partyId)).session(session);
 
@@ -76,6 +96,7 @@ const getTransactions = async (req, res) => {
   try {
     const page = Math.max(parseInt(req.query.page || '1', 10), 1);
     const limit = Math.min(Math.max(parseInt(req.query.limit || '10', 10), 1), 100);
+    const sortOrder = (req.query.sortOrder === 'asc') ? 'asc' : 'desc';
     const skip = (page - 1) * limit;
 
     // Build filter object
@@ -128,16 +149,80 @@ const getTransactions = async (req, res) => {
 
 
 
+    const sortSpec = sortOrder === 'asc' ? { date: 1, createdAt: 1, _id: 1 } : { date: -1, createdAt: -1, _id: -1 };
+
     const [items, total] = await Promise.all([
       Transaction.find(filter)
         .populate('party', 'name balance')
-        .sort({ date: -1, createdAt: -1, _id: -1 })
+        .sort(sortSpec)
         .skip(skip)
         .limit(limit),
       Transaction.countDocuments(filter),
     ]);
 
     const totalPages = Math.ceil(total / limit) || 1;
+    // Compute opening balance for this page relative to sort order
+    // asc: sum of deltas BEFORE this page (first 'skip' items)
+    // desc: sum of deltas AFTER this page (items following skip+limit)
+    const amountExpr = {
+      $cond: [
+        { $eq: ['$partyModel', 'Supplier'] },
+        {
+          $cond: [
+            { $eq: ['$type', 'Purchase'] }, '$amount',
+            {
+              $cond: [
+                { $eq: ['$type', 'Payment Out'] }, { $multiply: ['$amount', -1] }, { $multiply: ['$amount', -1] }
+              ]
+            }
+          ]
+        },
+        {
+          $cond: [
+            { $eq: ['$type', 'Sale'] }, '$amount',
+            {
+              $cond: [
+                { $eq: ['$type', 'Payment In'] }, { $multiply: ['$amount', -1] }, { $multiply: ['$amount', -1] }
+              ]
+            }
+          ]
+        }
+      ]
+    };
+
+    let openingBalance = 0;
+    if (sortOrder === 'asc') {
+      if (skip > 0) {
+        const pipeline = [
+          { $match: filter },
+          { $sort: sortSpec },
+          { $limit: skip },
+          { $group: { _id: null, total: { $sum: amountExpr } } }
+        ];
+        const agg = await Transaction.aggregate(pipeline);
+        openingBalance = (agg && agg[0] && agg[0].total) ? agg[0].total : 0;
+      }
+    } else {
+      const afterCount = Math.max(total - (skip + items.length), 0);
+      if (afterCount > 0) {
+        const pipeline = [
+          { $match: filter },
+          { $sort: sortSpec },
+          { $skip: skip + items.length },
+          { $group: { _id: null, total: { $sum: amountExpr } } }
+        ];
+        const agg = await Transaction.aggregate(pipeline);
+        openingBalance = (agg && agg[0] && agg[0].total) ? agg[0].total : 0;
+      }
+    }
+
+    // Also compute total current balance across all matching items for convenience
+    const totalBalanceAgg = await Transaction.aggregate([
+      { $match: filter },
+      { $group: { _id: null, total: { $sum: amountExpr } } }
+    ]);
+    const totalCurrentBalance = (totalBalanceAgg && totalBalanceAgg[0] && totalBalanceAgg[0].total) ? totalBalanceAgg[0].total : 0;
+
     res.json({
       items,
       page,
@@ -146,6 +231,9 @@ const getTransactions = async (req, res) => {
       totalPages,
       hasNextPage: page < totalPages,
       hasPrevPage: page > 1,
+      sortOrder,
+      openingBalance,
+      totalCurrentBalance,
     });
   } catch (error) {
     console.error('Error in getTransactions:', error);
@@ -162,6 +250,17 @@ const updateTransaction = async (req, res) => {
 
         if (!transaction) throw new Error('Transaction not found');
         if (transaction.user.toString() !== req.user._id.toString()) throw new Error('Not authorized');
+
+        // Validate party model and type alignment
+        if (!isValidPartyModel(partyModel)) {
+          throw new Error('Invalid partyModel. Must be Supplier or Customer');
+        }
+        if (!isValidType(type)) {
+          throw new Error('Invalid transaction type');
+        }
+        if (!isTypeAllowedForParty(partyModel, type)) {
+          throw new Error(`Invalid transaction type '${type}' for ${partyModel}`);
+        }
 
         // --- Find Original Documents ---
         const originalParty = await (transaction.partyModel === 'Supplier' ? Supplier.findById(transaction.party) : Customer.findById(transaction.party)).session(session);
@@ -369,6 +468,198 @@ const getTransactionSummaries = async (req, res) => {
   }
 };
 
+// @desc    Get opening balance for a specific party and page
+// @route   GET /api/transactions/opening-balance
+// @access  Private
+const getOpeningBalance = async (req, res) => {
+  try {
+    const { partyId, partyModel, page = 1, limit = 10, sortOrder = 'desc' } = req.query;
+    
+    if (!partyId || !partyModel) {
+      return res.status(400).json({ message: 'partyId and partyModel are required' });
+    }
+
+    const filter = { 
+      user: req.user._id,
+      party: partyId,
+      partyModel: partyModel
+    };
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const sortSpec = sortOrder === 'asc' ? { date: 1, createdAt: 1, _id: 1 } : { date: -1, createdAt: -1, _id: -1 };
+
+    // Calculate opening balance based on sort order
+    const amountExpr = {
+      $cond: [
+        { $eq: ['$partyModel', 'Supplier'] },
+        {
+          $cond: [
+            { $eq: ['$type', 'Purchase'] }, '$amount',
+            {
+              $cond: [
+                { $eq: ['$type', 'Payment Out'] }, { $multiply: ['$amount', -1] }, { $multiply: ['$amount', -1] }
+              ]
+            }
+          ]
+        },
+        {
+          $cond: [
+            { $eq: ['$type', 'Sale'] }, '$amount',
+            {
+              $cond: [
+                { $eq: ['$type', 'Payment In'] }, { $multiply: ['$amount', -1] }, { $multiply: ['$amount', -1] }
+              ]
+            }
+          ]
+        }
+      ]
+    };
+
+    let openingBalance = 0;
+    const total = await Transaction.countDocuments(filter);
+    console.log(`Debug: partyId=${partyId}, partyModel=${partyModel}, total=${total}, page=${page}, limit=${limit}, sortOrder=${sortOrder}, skip=${skip}`);
+    
+    // Debug: Let's see what transactions actually exist for this party
+    const sampleTransactions = await Transaction.find(filter).limit(5).sort({ date: -1, createdAt: -1, _id: -1 });
+    console.log(`Debug: Sample transactions for this party:`, sampleTransactions.map(t => ({ 
+      type: t.type, 
+      amount: t.amount, 
+      partyModel: t.partyModel,
+      date: t.date 
+    })));
+    
+    if (sortOrder === 'asc') {
+      // For ascending: sum of all transactions BEFORE this page
+      if (skip > 0) {
+        // Get transactions before the current page
+        const openingTransactions = await Transaction.find(filter)
+          .sort(sortSpec)
+          .limit(skip);
+        
+        console.log(`Debug: ASC - Opening transactions found:`, openingTransactions.length);
+        console.log(`Debug: ASC - Opening transactions:`, openingTransactions.map(t => ({ 
+          type: t.type, 
+          amount: t.amount, 
+          partyModel: t.partyModel 
+        })));
+        
+        // Calculate opening balance manually
+        openingBalance = 0;
+        for (const transaction of openingTransactions) {
+          let amount = 0;
+          if (transaction.partyModel === 'Supplier') {
+            if (transaction.type === 'Purchase') {
+              amount = transaction.amount;
+            } else if (transaction.type === 'Payment Out') {
+              amount = -transaction.amount;
+            } else {
+              amount = -transaction.amount;
+            }
+          } else { // Customer
+            if (transaction.type === 'Sale') {
+              amount = transaction.amount;
+            } else if (transaction.type === 'Payment In') {
+              amount = -transaction.amount;
+            } else {
+              amount = -transaction.amount;
+            }
+          }
+          openingBalance += amount;
+          console.log(`Debug: ASC - Transaction ${transaction.type} ${transaction.amount} -> ${amount}, running total: ${openingBalance}`);
+        }
+        console.log(`Debug: ASC - Final opening balance: ${openingBalance}`);
+      }
+    } else {
+      // For descending: sum of all transactions AFTER this page
+      const afterCount = Math.max(total - (skip + parseInt(limit)), 0);
+      console.log(`Debug: DESC - afterCount=${afterCount}`);
+      if (afterCount > 0) {
+        // Let's use a simpler approach - get the transactions directly and calculate manually
+        const openingTransactions = await Transaction.find(filter)
+          .sort(sortSpec)
+          .skip(skip + parseInt(limit))
+          .limit(afterCount);
+        
+        console.log(`Debug: Opening transactions found:`, openingTransactions.length);
+        console.log(`Debug: Opening transactions:`, openingTransactions.map(t => ({ 
+          type: t.type, 
+          amount: t.amount, 
+          partyModel: t.partyModel 
+        })));
+        
+        // Calculate opening balance manually
+        openingBalance = 0;
+        for (const transaction of openingTransactions) {
+          let amount = 0;
+          if (transaction.partyModel === 'Supplier') {
+            if (transaction.type === 'Purchase') {
+              amount = transaction.amount;
+            } else if (transaction.type === 'Payment Out') {
+              amount = -transaction.amount;
+            } else {
+              amount = -transaction.amount;
+            }
+          } else { // Customer
+            if (transaction.type === 'Sale') {
+              amount = transaction.amount;
+            } else if (transaction.type === 'Payment In') {
+              amount = -transaction.amount;
+            } else {
+              amount = -transaction.amount;
+            }
+          }
+          openingBalance += amount;
+          console.log(`Debug: Transaction ${transaction.type} ${transaction.amount} -> ${amount}, running total: ${openingBalance}`);
+        }
+        console.log(`Debug: Final opening balance: ${openingBalance}`);
+      }
+    }
+
+    // Also get total current balance for the party using manual calculation
+    const allTransactions = await Transaction.find(filter);
+    console.log(`Debug: All transactions found:`, allTransactions.length);
+    
+    let totalCurrentBalance = 0;
+    for (const transaction of allTransactions) {
+      let amount = 0;
+      if (transaction.partyModel === 'Supplier') {
+        if (transaction.type === 'Purchase') {
+          amount = transaction.amount;
+        } else if (transaction.type === 'Payment Out') {
+          amount = -transaction.amount;
+        } else {
+          amount = -transaction.amount;
+        }
+      } else { // Customer
+        if (transaction.type === 'Sale') {
+          amount = transaction.amount;
+        } else if (transaction.type === 'Payment In') {
+          amount = -transaction.amount;
+        } else {
+          amount = -transaction.amount;
+        }
+      }
+      totalCurrentBalance += amount;
+    }
+    console.log(`Debug: Total current balance calculated: ${totalCurrentBalance}`);
+
+    console.log(`Debug: Final response - openingBalance=${openingBalance}, totalCurrentBalance=${totalCurrentBalance}`);
+    res.json({
+      openingBalance,
+      totalCurrentBalance,
+      partyId,
+      partyModel,
+      page: parseInt(page),
+      limit: parseInt(limit),
+      sortOrder
+    });
+
+  } catch (error) {
+    console.error('Error in getOpeningBalance:', error);
+    res.status(500).json({ message: 'Server Error', error: error.message });
+  }
+};
+
 // Helper function to get current week range
 const getWeekRange = () => {
   const now = new Date();
@@ -384,4 +675,4 @@ const getWeekRange = () => {
   return { start, end };
 }; 
 
-module.exports = { createTransaction, deleteTransaction, getTransactions, updateTransaction, getTransactionSummaries };
+module.exports = { createTransaction, deleteTransaction, getTransactions, updateTransaction, getTransactionSummaries, getOpeningBalance };

@@ -1,22 +1,21 @@
 // src/pages/DashboardPage.jsx
-import { useState, useEffect, useMemo } from 'react';
-import { getSuppliers, getCustomers, getAllTransactions, getTransactionSummaries } from '../services/apiService';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { getSuppliers, getCustomers, getTransactions, getTransactionSummaries } from '../services/apiService';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 const DashboardPage = () => {
   const [suppliers, setSuppliers] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [transactions, setTransactions] = useState([]);
+  const [summaryData, setSummaryData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedPeriod, setSelectedPeriod] = useState('all-time');
   const [chartToggle, setChartToggle] = useState('customers'); // 'customers' or 'suppliers'
   const [loadingProgress, setLoadingProgress] = useState({ current: 0, total: 0, message: '' });
-  const [useSummaryEndpoint, setUseSummaryEndpoint] = useState(false);
-
-  useEffect(() => {
-    fetchData();
-  }, []);
+  const [useSummaryEndpoint, setUseSummaryEndpoint] = useState(true); // Default to fast mode
+  const [dataCache, setDataCache] = useState({});
+  const [chartsLoaded, setChartsLoaded] = useState(false);
 
   // Calculate date range based on selected period
   const getDateRange = (period = selectedPeriod) => {
@@ -57,10 +56,33 @@ const DashboardPage = () => {
     }
   };
 
-  const fetchData = async () => {
+  // Helper function to get date range parameters
+  const getDateRangeParams = (period) => {
+    const range = getDateRange(period);
+    return {
+      startDate: range.startDate.toISOString(),
+      endDate: range.endDate.toISOString()
+    };
+  };
+
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      setLoadingProgress({ current: 0, total: 3, message: 'Loading suppliers and customers...' });
+      setError(null);
+      
+      // Check cache first
+      const cacheKey = `dashboard-${selectedPeriod}`;
+      if (dataCache[cacheKey] && useSummaryEndpoint) {
+        const cached = dataCache[cacheKey];
+        setSuppliers(cached.suppliers);
+        setCustomers(cached.customers);
+        setTransactions(cached.transactions);
+        setSummaryData(cached.summaryData);
+        setLoading(false);
+        return;
+      }
+
+      setLoadingProgress({ current: 0, total: 4, message: 'Loading parties...' });
       
       // Fetch suppliers and customers first
       const [suppliersRes, customersRes] = await Promise.all([
@@ -70,15 +92,58 @@ const DashboardPage = () => {
       setSuppliers(suppliersRes.data);
       setCustomers(customersRes.data);
       
-      setLoadingProgress({ current: 1, total: 3, message: 'Loading all transactions...' });
+      setLoadingProgress({ current: 1, total: 4, message: 'Loading summary data...' });
       
-      // Fetch all transactions with pagination
-      const transactionsRes = await getAllTransactions();
+      let summaryData = null;
+      let transactionsData = [];
+      
+      if (useSummaryEndpoint) {
+        // Use summary endpoint for aggregated data
+        try {
+          const summaryRes = await getTransactionSummaries(selectedPeriod);
+          summaryData = summaryRes.data;
+          setSummaryData(summaryData);
+        } catch (summaryError) {
+          console.warn('Summary endpoint failed:', summaryError);
+          summaryData = null;
+        }
+      }
+      
+      setLoadingProgress({ current: 2, total: 4, message: 'Loading recent transactions...' });
+      
+      // Always fetch recent transactions for the table (limited to 10 for performance)
+      const transactionsRes = await getTransactions({ 
+        limit: 10, 
+        sortOrder: 'desc',
+        ...getDateRangeParams(selectedPeriod)
+      });
+      transactionsData = transactionsRes.data.items || [];
+      
       // Sort transactions by date descending for recent transactions
-      setTransactions((transactionsRes.data.items || []).sort((a, b) => new Date(b.date) - new Date(a.date)));
+      const sortedTransactions = transactionsData.sort((a, b) => new Date(b.date) - new Date(a.date));
+      setTransactions(sortedTransactions);
       
-      setLoadingProgress({ current: 2, total: 3, message: 'Finalizing...' });
-      setError(null);
+      // Cache the data
+      if (useSummaryEndpoint) {
+        setDataCache(prev => ({
+          ...prev,
+          [cacheKey]: {
+            suppliers: suppliersRes.data,
+            customers: customersRes.data,
+            transactions: sortedTransactions,
+            summaryData: summaryData,
+            timestamp: Date.now()
+          }
+        }));
+      }
+      
+      setLoadingProgress({ current: 3, total: 4, message: 'Finalizing...' });
+      
+      // Load charts after a short delay to improve perceived performance
+      setTimeout(() => {
+        setChartsLoaded(true);
+      }, 100);
+      
     } catch (err) {
       setError('Failed to fetch data. Please try again later.');
       console.error(err);
@@ -86,7 +151,16 @@ const DashboardPage = () => {
       setLoading(false);
       setLoadingProgress({ current: 0, total: 0, message: '' });
     }
-  };
+  }, [selectedPeriod, useSummaryEndpoint, dataCache]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // Clear cache when period changes
+  useEffect(() => {
+    setChartsLoaded(false);
+  }, [selectedPeriod, useSummaryEndpoint]);
 
   const dateRange = useMemo(() => getDateRange(), [selectedPeriod]);
 
@@ -108,10 +182,37 @@ const DashboardPage = () => {
   const kpis = useMemo(() => {
     const totalSuppliers = suppliers.length;
     const totalCustomers = customers.length;
-    const totalSales = sumByType('Sale');
-    const totalPurchase = sumByType('Purchase');
-    const totalPaymentIn = sumByType('Payment In');
-    const totalPaymentOut = sumByType('Payment Out');
+    
+    let totalSales = 0;
+    let totalPurchase = 0;
+    let totalPaymentIn = 0;
+    let totalPaymentOut = 0;
+    
+    // Use summary data if available (faster), otherwise calculate from transactions
+    if (summaryData && summaryData.summaries) {
+      summaryData.summaries.forEach(summary => {
+        switch (summary._id) {
+          case 'Sale':
+            totalSales = summary.totalAmount || 0;
+            break;
+          case 'Purchase':
+            totalPurchase = summary.totalAmount || 0;
+            break;
+          case 'Payment In':
+            totalPaymentIn = summary.totalAmount || 0;
+            break;
+          case 'Payment Out':
+            totalPaymentOut = summary.totalAmount || 0;
+            break;
+        }
+      });
+    } else {
+      // Fallback to calculating from transactions
+      totalSales = sumByType('Sale');
+      totalPurchase = sumByType('Purchase');
+      totalPaymentIn = sumByType('Payment In');
+      totalPaymentOut = sumByType('Payment Out');
+    }
 
     return {
       totalSales,
@@ -121,71 +222,94 @@ const DashboardPage = () => {
       totalPaymentIn,
       totalPaymentOut,
     };
-  }, [filteredTransactions, suppliers, customers]);
+  }, [summaryData, filteredTransactions, suppliers, customers]);
 
-  // Calculate chart data
+  // Calculate chart data with optimizations
   const chartData = useMemo(() => {
-    const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
+    if (!chartsLoaded) {
+      return { salesData: [], topParties: [] };
+    }
+
+    const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D', '#FFC658'];
     
-    // Sales data for the week (dynamic)
-    const weekRange = getDateRange('this-week');
-    const filteredWeekTransactions = transactions.filter(t => {
-      const transactionDate = new Date(t.date);
-      return transactionDate >= weekRange.startDate && transactionDate <= weekRange.endDate;
-    });
-    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    const salesByDay = Array(7).fill(0);
-    const startTime = weekRange.startDate.getTime();
-    filteredWeekTransactions
-      .filter(t => t.type === 'Sale')
-      .forEach(t => {
-        const transactionDate = new Date(t.date);
-        const dayIndex = Math.floor((transactionDate.getTime() - startTime) / (24 * 60 * 60 * 1000));
-        if (dayIndex >= 0 && dayIndex < 7) {
-          salesByDay[dayIndex] += t.amount || 0;
-        }
-      });
-    const salesData = days.map((day, i) => ({ day, sales: salesByDay[i] }));
+    // Sales data for the week - use summary data if available
+    let salesData = [];
+    if (summaryData && summaryData.weeklySalesData) {
+      // Use pre-calculated weekly sales data from summary endpoint
+      salesData = summaryData.weeklySalesData;
+    } else {
+      // Fallback to calculating from transactions
+      const weekRange = getDateRange('this-week');
+      const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      const salesByDay = Array(7).fill(0);
+      
+      // Only process transactions within the week range
+      const weekStartTime = weekRange.startDate.getTime();
+      const weekEndTime = weekRange.endDate.getTime();
+      
+      transactions
+        .filter(t => {
+          const transactionTime = new Date(t.date).getTime();
+          return transactionTime >= weekStartTime && transactionTime <= weekEndTime && t.type === 'Sale';
+        })
+        .forEach(t => {
+          const transactionDate = new Date(t.date);
+          const dayIndex = Math.floor((transactionDate.getTime() - weekStartTime) / (24 * 60 * 60 * 1000));
+          if (dayIndex >= 0 && dayIndex < 7) {
+            salesByDay[dayIndex] += t.amount || 0;
+          }
+        });
+      
+      salesData = days.map((day, i) => ({ day, sales: salesByDay[i] }));
+    }
 
-    // Top 5 customers or suppliers
-    const getTopParties = () => {
-      if (chartToggle === 'customers') {
-        const salesMap = new Map();
-        filteredTransactions
-          .filter(t => t.type === 'Sale')
-          .forEach(t => {
-            const id = t.party?._id;
-            if (id) {
-              salesMap.set(id, (salesMap.get(id) || 0) + (t.amount || 0));
-            }
-          });
-        return customers
-          .map(c => ({ name: c.name, value: salesMap.get(c._id) || 0 }))
-          .sort((a, b) => b.value - a.value)
-          .slice(0, 5)
-          .map((item, index) => ({ ...item, color: COLORS[index % COLORS.length] }));
-      } else {
-        const purchasesMap = new Map();
-        filteredTransactions
-          .filter(t => t.type === 'Purchase')
-          .forEach(t => {
-            const id = t.party?._id;
-            if (id) {
-              purchasesMap.set(id, (purchasesMap.get(id) || 0) + (t.amount || 0));
-            }
-          });
-        return suppliers
-          .map(s => ({ name: s.name, value: purchasesMap.get(s._id) || 0 }))
-          .sort((a, b) => b.value - a.value)
-          .slice(0, 5)
-          .map((item, index) => ({ ...item, color: COLORS[index % COLORS.length] }));
+    // Top 5 customers or suppliers - use summary data if available
+    let topParties = [];
+    if (summaryData) {
+      if (chartToggle === 'customers' && summaryData.topCustomers) {
+        topParties = summaryData.topCustomers
+          .map((customer, index) => ({
+            name: customer.name.length > 15 ? customer.name.substring(0, 15) + '...' : customer.name,
+            value: customer.totalSales || 0,
+            color: COLORS[index % COLORS.length]
+          }))
+          .filter(party => party.value > 0);
+      } else if (chartToggle === 'suppliers' && summaryData.topSuppliers) {
+        topParties = summaryData.topSuppliers
+          .map((supplier, index) => ({
+            name: supplier.name.length > 15 ? supplier.name.substring(0, 15) + '...' : supplier.name,
+            value: supplier.totalPurchases || 0,
+            color: COLORS[index % COLORS.length]
+          }))
+          .filter(party => party.value > 0);
       }
-    };
-
-    const topParties = getTopParties();
+    } else {
+      // Fallback to calculating from transactions
+      const partyMap = new Map();
+      const targetType = chartToggle === 'customers' ? 'Sale' : 'Purchase';
+      const partyList = chartToggle === 'customers' ? customers : suppliers;
+      
+      // Process transactions more efficiently
+      filteredTransactions
+        .filter(t => t.type === targetType && t.party?._id)
+        .forEach(t => {
+          const id = t.party._id;
+          partyMap.set(id, (partyMap.get(id) || 0) + (t.amount || 0));
+        });
+      
+      topParties = partyList
+        .map(party => ({ 
+          name: party.name.length > 15 ? party.name.substring(0, 15) + '...' : party.name, 
+          value: partyMap.get(party._id) || 0 
+        }))
+        .filter(party => party.value > 0) // Only include parties with transactions
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 5)
+        .map((item, index) => ({ ...item, color: COLORS[index % COLORS.length] }));
+    }
 
     return { salesData, topParties };
-  }, [filteredTransactions, chartToggle, suppliers, customers, transactions]);
+  }, [summaryData, filteredTransactions, chartToggle, suppliers, customers, transactions, chartsLoaded]);
 
   if (loading) {
     return (
@@ -288,11 +412,11 @@ const DashboardPage = () => {
                 className={`w-full sm:w-auto text-center px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                   useSummaryEndpoint 
                     ? 'bg-green-100 text-green-700 hover:bg-green-200' 
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    : 'bg-orange-100 text-orange-700 hover:bg-orange-200'
                 }`}
-                title={useSummaryEndpoint ? 'Using fast summary mode' : 'Using full data mode'}
+                title={useSummaryEndpoint ? 'Fast mode: Limited data for quick loading' : 'Full mode: Complete data (slower loading)'}
               >
-                {useSummaryEndpoint ? 'Fast Mode' : 'Full Data'}
+                {useSummaryEndpoint ? '⚡ Fast Mode' : '📊 Full Data'}
               </button>
             </div>
           </div>
@@ -367,32 +491,44 @@ const DashboardPage = () => {
         {/* Line Chart - Sales in a week */}
         <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xl font-semibold text-gray-900">Line Chart of Sales in a week</h3>
+            <h3 className="text-xl font-semibold text-gray-900">Sales This Week</h3>
           </div>
           <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData.salesData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="day" stroke="#666" />
-                <YAxis stroke="#666" />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: 'white', 
-                    border: '1px solid #e5e7eb', 
-                    borderRadius: '8px',
-                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-                  }} 
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="sales" 
-                  stroke="#3b82f6" 
-                  strokeWidth={3}
-                  dot={{ fill: '#3b82f6', strokeWidth: 2, r: 6 }}
-                  activeDot={{ r: 8, stroke: '#3b82f6', strokeWidth: 2 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            {!chartsLoaded ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
+                  <p className="text-gray-500 text-sm">Loading chart...</p>
+                </div>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData.salesData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis dataKey="day" stroke="#666" />
+                  <YAxis stroke="#666" />
+                  <Tooltip 
+                    formatter={(value) => [`$${Number(value).toLocaleString()}`, 'Sales']}
+                    labelFormatter={(label) => `Day: ${label}`}
+                    contentStyle={{ 
+                      backgroundColor: 'white', 
+                      border: '1px solid #e5e7eb', 
+                      borderRadius: '8px',
+                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                      fontSize: '14px'
+                    }} 
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="sales" 
+                    stroke="#3b82f6" 
+                    strokeWidth={3}
+                    dot={{ fill: '#3b82f6', strokeWidth: 2, r: 6 }}
+                    activeDot={{ r: 8, stroke: '#3b82f6', strokeWidth: 2 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </div>
 
@@ -410,9 +546,21 @@ const DashboardPage = () => {
             </button>
           </div>
           <div className="h-80">
-            {chartData.topParties.length === 0 || chartData.topParties.every(p => p.value === 0) ? (
+            {!chartsLoaded ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
+                  <p className="text-gray-500 text-sm">Loading chart...</p>
+                </div>
+              </div>
+            ) : chartData.topParties.length === 0 || chartData.topParties.every(p => p.value === 0) ? (
               <div className="flex items-center justify-center h-full text-gray-500">
-                No data available
+                <div className="text-center">
+                  <svg className="w-12 h-12 mx-auto mb-2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
+                  <p>No data available</p>
+                </div>
               </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
@@ -422,10 +570,16 @@ const DashboardPage = () => {
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                    outerRadius={100}
+                    label={({ name, percent }) => {
+                      const percentage = (percent * 100).toFixed(0);
+                      return percentage > 5 ? `${name} ${percentage}%` : '';
+                    }}
+                    outerRadius={80}
+                    innerRadius={20}
                     fill="#8884d8"
                     dataKey="value"
+                    stroke="#fff"
+                    strokeWidth={2}
                   >
                     {chartData.topParties.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
@@ -433,14 +587,16 @@ const DashboardPage = () => {
                   </Pie>
                   <Tooltip 
                     formatter={(value, name) => [
-                      `$${value.toLocaleString()}`, 
+                      `$${Number(value).toLocaleString()}`, 
                       chartToggle === 'customers' ? 'Sales' : 'Purchases'
                     ]}
+                    labelFormatter={(label) => `Party: ${label}`}
                     contentStyle={{ 
                       backgroundColor: 'white', 
                       border: '1px solid #e5e7eb', 
                       borderRadius: '8px',
-                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                      fontSize: '14px'
                     }} 
                   />
                 </PieChart>

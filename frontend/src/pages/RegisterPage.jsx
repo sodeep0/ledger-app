@@ -1,6 +1,8 @@
 // src/pages/RegisterPage.jsx
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import authService from '../services/authService';
+import AlertDialog from '../components/AlertDialog';
 
 const RegisterPage = () => {
   const [formData, setFormData] = useState({
@@ -10,6 +12,9 @@ const RegisterPage = () => {
   });
 
   const { name, email, password } = formData;
+  const navigate = useNavigate();
+  const [alert, setAlert] = useState({ open: false, title: '', message: '' });
+  const [confirmPassword, setConfirmPassword] = useState('');
 
   const onChange = (e) => {
     setFormData((prevState) => ({
@@ -21,12 +26,15 @@ const RegisterPage = () => {
   const onSubmit = async (e) => {
     e.preventDefault();
     try {
+      if (password !== confirmPassword) {
+        setAlert({ open: true, title: 'Validation Error', message: 'Passwords do not match.' });
+        return;
+      }
       await authService.register({ name, email, password });
-      // We can redirect the user to the login page here later
-      alert('Registration successful!');
+      navigate('/verify', { state: { email } });
     } catch (error) {
       console.error('Registration failed', error);
-      alert('Registration failed. Please try again.');
+      setAlert({ open: true, title: 'Registration Failed', message: 'Registration failed. Please try again.' });
     }
   };
 
@@ -87,15 +95,45 @@ const RegisterPage = () => {
             />
           </div>
           <div>
+            <label
+              htmlFor="confirmPassword"
+              className="block text-sm font-medium text-gray-700"
+            >
+              Confirm Password
+            </label>
+            <input
+              type="password"
+              id="confirmPassword"
+              name="confirmPassword"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+              className="w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+            />
+          </div>
+          <div className="space-y-3">
             <button
               type="submit"
               className="w-full px-4 py-2 font-bold text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
             >
               Register
             </button>
+            <button
+              type="button"
+              onClick={() => navigate('/login')}
+              className="w-full px-4 py-2 font-bold text-indigo-700 bg-indigo-50 rounded-md hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            >
+              Already have an account? Login
+            </button>
           </div>
         </form>
       </div>
+      <AlertDialog
+        isOpen={alert.open}
+        title={alert.title}
+        message={alert.message}
+        onClose={() => setAlert({ open: false, title: '', message: '' })}
+      />
     </div>
   );
 };

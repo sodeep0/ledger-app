@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import { getTransactions, getSuppliers, getCustomers, createTransaction, updateTransaction, deleteTransaction } from '../services/apiService';
 import Modal from '../components/Modal';
+import AlertDialog from '../components/AlertDialog';
 import AddTransactionForm from '../components/AddTransactionForm';
 
 // ✨ OPTIMIZATION 4: Pure utility function moved outside the component.
@@ -69,6 +70,7 @@ const TransactionsPage = () => {
   const [totalTransactions, setTotalTransactions] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState(null);
+  const [alert, setAlert] = useState({ open: false, title: '', message: '' });
 
   const [filters, setFilters] = useState({
     dateRange: 'all',
@@ -166,7 +168,7 @@ const TransactionsPage = () => {
       setSelectedTransactionId(null);
     } catch (error) {
       console.error('Failed to delete transaction', error);
-      alert('Failed to delete transaction. Please try again.');
+      setAlert({ open: true, title: 'Delete Failed', message: 'Failed to delete transaction. Please try again.' });
     }
   }, [fetchData, selectedTransactionId]);
 
@@ -472,6 +474,13 @@ const TransactionsPage = () => {
           </div>
         </div>
       </Modal>
+
+      <AlertDialog
+        isOpen={alert.open}
+        title={alert.title}
+        message={alert.message}
+        onClose={() => setAlert({ open: false, title: '', message: '' })}
+      />
     </div>
   );
 };

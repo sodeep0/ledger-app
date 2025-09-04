@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getTransactionsByParty, getSuppliers, getCustomers } from '../services/apiService';
+import { getTransactionsByParty, getPartyById, createTransaction, getOpeningBalance } from '../services/apiService';
 
 const PartyDetailsPage = () => {
   const { partyType, partyId } = useParams();
@@ -8,11 +8,24 @@ const PartyDetailsPage = () => {
   
   const [party, setParty] = useState(null);
   const [transactions, setTransactions] = useState([]);
+  const [txPage, setTxPage] = useState(1);
+  const [txHasNext, setTxHasNext] = useState(false);
+  const [serverOpeningBalance, setServerOpeningBalance] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [sortBy, setSortBy] = useState('date');
   const [sortOrder, setSortOrder] = useState('asc');
   const [searchTerm, setSearchTerm] = useState('');
+  const [newDate, setNewDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [newDescription, setNewDescription] = useState('');
+  const [newPurchaseSaleAmount, setNewPurchaseSaleAmount] = useState('');
+  const [newPaymentAmount, setNewPaymentAmount] = useState('');
+  const [newMode, setNewMode] = useState('Cash');
+  const [submitError, setSubmitError] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [toast, setToast] = useState({ visible: false, type: 'success', message: '' });
+  const [totalTransactions, setTotalTransactions] = useState(0);
+  const [fullCurrentBalance, setFullCurrentBalance] = useState(0);
 
   useEffect(() => {
     fetchPartyAndTransactions();
@@ -22,25 +35,38 @@ const PartyDetailsPage = () => {
     try {
       setLoading(true);
       
-      // Fetch party details
-      const partyResponse = partyType === 'supplier' 
-        ? await getSuppliers() 
-        : await getCustomers();
-      
-      const partyData = partyResponse.data.find(p => p._id === partyId);
+      // Fetch single party details efficiently
+      const partyResponse = await getPartyById(partyType, partyId);
+      const partyData = partyResponse?.data;
       if (!partyData) {
         setError('Party not found');
         return;
       }
       setParty(partyData);
 
-      // Fetch transactions for this party
+      // Fetch newest 10 transactions (descending)
       const transactionsResponse = await getTransactionsByParty(partyId, {
-        limit: 1000 // Get all transactions for this party
+        page: 1,
+        limit: 10,
+        sortOrder: 'desc',
       });
-      
-      setTransactions(transactionsResponse.data.items || []);
+      const { items, hasNextPage, page } = transactionsResponse.data;
+      setTransactions(items || []);
+      setTxPage(page || 1);
+      setTxHasNext(Boolean(hasNextPage));
+      setTotalTransactions(Number(transactionsResponse.data?.total || items?.length || 0));
       setError(null);
+
+      // Fetch opening balance separately using the dedicated API
+      const partyModel = partyType === 'supplier' ? 'Supplier' : 'Customer';
+      const openingBalanceResponse = await getOpeningBalance(partyId, partyModel, {
+        page: 1,
+        limit: 10,
+        sortOrder: 'desc'
+      });
+      const { openingBalance, totalCurrentBalance } = openingBalanceResponse.data;
+      setServerOpeningBalance(Number(openingBalance || 0));
+      setFullCurrentBalance(Number(totalCurrentBalance || 0));
     } catch (err) {
       setError('Failed to fetch data. Please try again later.');
       console.error(err);
@@ -49,26 +75,51 @@ const PartyDetailsPage = () => {
     }
   };
 
-  const filteredAndSortedTransactions = () => {
-    let filtered = transactions.filter(transaction =>
-      transaction.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      transaction.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      transaction.mode?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      transaction.amount.toString().includes(searchTerm)
-    );
+  const loadMoreTransactions = async () => {
+    try {
+      const nextPage = txPage + 1;
+      const res = await getTransactionsByParty(partyId, {
+        page: nextPage,
+        limit: 10,
+        sortOrder: 'desc',
+      });
+      const { items, hasNextPage } = res.data;
+      setTransactions((prev) => [...prev, ...(items || [])]);
+      setTxPage(nextPage);
+      setTxHasNext(Boolean(hasNextPage));
+      if (typeof res.data?.total === 'number') setTotalTransactions(res.data.total);
 
-    // Compute running balance in true chronological order
-    const chronological = [...filtered].sort((a, b) => {
-      const byDate = new Date(a.date) - new Date(b.date);
-      if (byDate !== 0) return byDate;
-      const byCreated = (a.createdAt ? new Date(a.createdAt) : 0) - (b.createdAt ? new Date(b.createdAt) : 0);
-      if (byCreated !== 0) return byCreated;
-      return (a._id || '').localeCompare(b._id || '');
-    });
+      // Refresh opening balance for the new page
+      const partyModel = partyType === 'supplier' ? 'Supplier' : 'Customer';
+      const openingBalanceResponse = await getOpeningBalance(partyId, partyModel, {
+        page: nextPage,
+        limit: 10,
+        sortOrder: 'desc'
+      });
+      const { openingBalance, totalCurrentBalance } = openingBalanceResponse.data;
+      setServerOpeningBalance(Number(openingBalance || 0));
+      setFullCurrentBalance(Number(totalCurrentBalance || 0));
+    } catch (e) {
+      console.error('Failed to load more transactions', e);
+      setToast({ visible: true, type: 'error', message: 'Failed to load more transactions.' });
+      setTimeout(() => setToast((t) => ({ ...t, visible: false })), 2500);
+    }
+  };
 
-    let runningBalance = 0;
+  const { filteredWithBalances, currentBalance, openingBalance } = useMemo(() => {
+    // Build running balance map starting from serverOpeningBalance and iterating loaded items in true chronological order
+    const chronologicalAll = [...transactions]
+      .sort((a, b) => {
+        const byDate = new Date(a.date) - new Date(b.date);
+        if (byDate !== 0) return byDate;
+        const byCreated = (a.createdAt ? new Date(a.createdAt) : 0) - (b.createdAt ? new Date(b.createdAt) : 0);
+        if (byCreated !== 0) return byCreated;
+        return (a._id || '').localeCompare(b._id || '');
+      });
+
+    let runningBalance = serverOpeningBalance || 0;
     const idToBalance = new Map();
-    for (const transaction of chronological) {
+    for (const transaction of chronologicalAll) {
       let balanceChange = 0;
       if (partyType === 'supplier') {
         if (transaction.type === 'Purchase') {
@@ -90,6 +141,14 @@ const PartyDetailsPage = () => {
       runningBalance += balanceChange;
       idToBalance.set(transaction._id, runningBalance);
     }
+
+    // Apply search filter AFTER computing full-history balances
+    let filtered = transactions.filter(transaction =>
+      transaction.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      transaction.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      transaction.mode?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      transaction.amount.toString().includes(searchTerm)
+    );
 
     // Sort for display according to current sort settings
     const displaySorted = [...filtered].sort((a, b) => {
@@ -119,9 +178,15 @@ const PartyDetailsPage = () => {
       return sortOrder === 'asc' ? (aValue > bValue ? 1 : -1) : (aValue < bValue ? 1 : -1);
     });
 
-    // Attach the correct running balance to each row regardless of display order
-    return displaySorted.map(t => ({ ...t, runningBalance: idToBalance.get(t._id) || 0 }));
-  };
+    const withBalances = displaySorted.map(t => ({ ...t, runningBalance: idToBalance.get(t._id) || 0 }));
+    const opening = Number(serverOpeningBalance || 0);
+
+    return {
+      filteredWithBalances: withBalances,
+      currentBalance: runningBalance,
+      openingBalance: opening,
+    };
+  }, [transactions, searchTerm, sortBy, sortOrder, partyType, serverOpeningBalance]);
 
   const getTransactionTypeColor = (type) => {
     switch (type) {
@@ -165,17 +230,7 @@ const PartyDetailsPage = () => {
     }
   };
 
-  const calculateTotalAmount = () => {
-    return transactions.reduce((total, transaction) => {
-      // For suppliers: Purchase and Payment Out are positive (we owe them)
-      // For customers: Sale and Payment In are positive (they owe us)
-      if (partyType === 'supplier') {
-        return total + (transaction.type === 'Purchase' || transaction.type === 'Payment Out' ? transaction.amount : -transaction.amount);
-      } else {
-        return total + (transaction.type === 'Sale' || transaction.type === 'Payment In' ? transaction.amount : -transaction.amount);
-      }
-    }, 0);
-  };
+  
 
   const exportToCSV = () => {
     const csvEscape = (value) => {
@@ -187,7 +242,7 @@ const PartyDetailsPage = () => {
     const dynamicPaymentHeader = partyType === 'supplier' ? 'Payment Out' : 'Payment In';
     const headers = ['Date', 'Description', dynamicPurchaseSaleHeader, dynamicPaymentHeader, 'Mode', 'Balance'];
 
-    const rows = filteredAndSortedTransactions().map(t => {
+    const rows = filteredWithBalances.map(t => {
       const datePart = new Date(t.date).toLocaleDateString();
       const timePart = t.createdAt ? new Date(t.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
       const dateWithTime = timePart ? `${datePart} ${timePart}` : datePart;
@@ -215,6 +270,55 @@ const PartyDetailsPage = () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const handleAddTransaction = async () => {
+    try {
+      setSubmitError(null);
+      setSubmitting(true);
+      const hasPurchaseSale = newPurchaseSaleAmount !== '' && Number(newPurchaseSaleAmount) > 0;
+      const hasPayment = newPaymentAmount !== '' && Number(newPaymentAmount) > 0;
+      if (hasPurchaseSale && hasPayment) {
+        throw new Error('Enter amount in only one column.');
+      }
+      if (!hasPurchaseSale && !hasPayment) {
+        throw new Error('Enter a valid amount.');
+      }
+      if (!newDate) {
+        throw new Error('Date is required.');
+      }
+
+      const amount = hasPurchaseSale ? Number(newPurchaseSaleAmount) : Number(newPaymentAmount);
+      const partyModel = partyType === 'supplier' ? 'Supplier' : 'Customer';
+      const type = hasPurchaseSale
+        ? (partyType === 'supplier' ? 'Purchase' : 'Sale')
+        : (partyType === 'supplier' ? 'Payment Out' : 'Payment In');
+
+      await createTransaction({
+        date: new Date(newDate),
+        type,
+        party: partyId,
+        partyModel,
+        mode: newMode,
+        description: newDescription || undefined,
+        amount,
+      });
+
+      // Refresh and clear form
+      await fetchPartyAndTransactions();
+      setNewDescription('');
+      setNewPurchaseSaleAmount('');
+      setNewPaymentAmount('');
+      setNewMode('Cash');
+      setToast({ visible: true, type: 'success', message: 'Transaction added successfully.' });
+      setTimeout(() => setToast((t) => ({ ...t, visible: false })), 2500);
+    } catch (e) {
+      setSubmitError(e.message || 'Failed to add transaction');
+      setToast({ visible: true, type: 'error', message: e.message || 'Failed to add transaction.' });
+      setTimeout(() => setToast((t) => ({ ...t, visible: false })), 3000);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (loading) {
@@ -245,10 +349,18 @@ const PartyDetailsPage = () => {
     );
   }
 
-  const filteredTransactions = filteredAndSortedTransactions();
+  const filteredTransactions = filteredWithBalances;
 
   return (
     <div>
+      {/* Toast */}
+      {toast.visible && (
+        <div className={`fixed top-4 right-4 z-50 px-4 py-2 rounded shadow text-sm ${
+          toast.type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'
+        }`}>
+          {toast.message}
+        </div>
+      )}
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center mb-4">
@@ -276,17 +388,17 @@ const PartyDetailsPage = () => {
           <div className="bg-white p-6 rounded-lg shadow">
             <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider">Current Balance</h3>
             <p className={`mt-2 text-lg font-semibold ${
-              party?.balance >= 0 
+              (Number(fullCurrentBalance) >= 0)
                 ? (partyType === 'supplier' ? 'text-red-600' : 'text-green-600')
                 : (partyType === 'supplier' ? 'text-green-600' : 'text-red-600')
             }`}>
-              ${party?.balance?.toLocaleString()}
+              ${Number(fullCurrentBalance || 0).toLocaleString()}
             </p>
           </div>
           
           <div className="bg-white p-6 rounded-lg shadow">
             <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider">Total Transactions</h3>
-            <p className="mt-2 text-lg text-gray-900">{transactions.length}</p>
+            <p className="mt-2 text-lg text-gray-900">{totalTransactions}</p>
           </div>
         </div>
       </div>
@@ -366,6 +478,99 @@ const PartyDetailsPage = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
+                {/* Input Row */}
+                <tr className="bg-gray-50">
+                  <td className="px-6 py-3 whitespace-nowrap">
+                    <input
+                      type="date"
+                      value={newDate}
+                      onChange={(e) => setNewDate(e.target.value)}
+                      className="w-full border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500"
+                    />
+                  </td>
+                  <td className="px-6 py-3">
+                    <input
+                      type="text"
+                      placeholder="Description (optional)"
+                      value={newDescription}
+                      onChange={(e) => setNewDescription(e.target.value)}
+                      className="w-full border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500"
+                    />
+                  </td>
+                  <td className="px-6 py-3 whitespace-nowrap text-right">
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="0.00"
+                      value={newPurchaseSaleAmount}
+                      onChange={(e) => {
+                        setNewPurchaseSaleAmount(e.target.value);
+                        if (e.target.value) setNewPaymentAmount('');
+                      }}
+                      className="w-32 border border-gray-300 rounded-md px-2 py-1 text-sm text-right focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500"
+                    />
+                  </td>
+                  <td className="px-6 py-3 whitespace-nowrap text-right">
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="0.00"
+                      value={newPaymentAmount}
+                      onChange={(e) => {
+                        setNewPaymentAmount(e.target.value);
+                        if (e.target.value) setNewPurchaseSaleAmount('');
+                      }}
+                      className="w-32 border border-gray-300 rounded-md px-2 py-1 text-sm text-right focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500"
+                    />
+                  </td>
+                  <td className="px-6 py-3 whitespace-nowrap">
+                    <select
+                      value={newMode}
+                      onChange={(e) => setNewMode(e.target.value)}
+                      className="border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500"
+                    >
+                      <option value="Cash">Cash</option>
+                      <option value="Bank">Bank</option>
+                      <option value="Online Payment">Online Payment</option>
+                    </select>
+                  </td>
+                  <td className="px-6 py-3 whitespace-nowrap text-right">
+                    <button
+                      onClick={handleAddTransaction}
+                      disabled={submitting}
+                      className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 disabled:opacity-50"
+                    >
+                      {submitting ? 'Adding...' : 'Add'}
+                    </button>
+                  </td>
+                </tr>
+                {submitError && (
+                  <tr>
+                    <td colSpan={6} className="px-6 pb-2 text-sm text-red-600">
+                      {submitError}
+                    </td>
+                  </tr>
+                )}
+                {filteredTransactions.length > 0 && (
+                  <tr className="bg-white">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">-</td>
+                    <td className="px-6 py-4 text-sm text-gray-900">Opening Balance</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right"><span className="text-gray-400 text-xs">-</span></td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right"><span className="text-gray-400 text-xs">-</span></td>
+                    <td className="px-6 py-4 whitespace-nowrap"><span className="text-gray-400 text-xs">-</span></td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <span className={`${
+                        openingBalance >= 0
+                          ? (partyType === 'supplier' ? 'text-red-600' : 'text-green-600')
+                          : (partyType === 'supplier' ? 'text-green-600' : 'text-red-600')
+                      }`}>
+                        ${Number(openingBalance || 0).toLocaleString()}
+                      </span>
+                    </td>
+                  </tr>
+                )}
                 {filteredTransactions.map((transaction) => {
                   const category = getTransactionCategory(transaction);
                   const isPurchaseSale = transaction.type === 'Purchase' || transaction.type === 'Sale';
@@ -421,6 +626,16 @@ const PartyDetailsPage = () => {
                 })}
                </tbody>
             </table>
+            {txHasNext && (
+              <div className="p-4 border-t border-gray-200 flex justify-center">
+                <button
+                  onClick={loadMoreTransactions}
+                  className="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm hover:bg-gray-50"
+                >
+                  Load more
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

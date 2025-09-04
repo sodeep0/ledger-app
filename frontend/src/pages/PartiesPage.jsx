@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getSuppliers, getCustomers, createSupplier, createCustomer, updateSupplier, updateCustomer, deleteSupplier, deleteCustomer } from '../services/apiService';
+import { getSuppliers, getCustomers, createSupplier, createCustomer, updateSupplier, updateCustomer, deleteSupplier, deleteCustomer, getTransactionsByParty } from '../services/apiService';
 import Modal from '../components/Modal';
 
 const PartiesPage = () => {
@@ -16,6 +16,9 @@ const PartiesPage = () => {
   const [editingParty, setEditingParty] = useState(null);
   const [formData, setFormData] = useState({ name: '', contactInfo: '' });
   const [formErrors, setFormErrors] = useState({});
+  const [balancesByKey, setBalancesByKey] = useState({}); // key format: `${partyType}:${id}`
+  const [balancesLoading, setBalancesLoading] = useState(false);
+  const [lastComputedData, setLastComputedData] = useState({ suppliers: [], customers: [] });
 
   useEffect(() => {
     fetchData();
@@ -37,6 +40,71 @@ const PartiesPage = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Compute balances from all transactions for each party
+  useEffect(() => {
+    const computeBalanceForType = async (parties, partyType) => {
+      if (!parties || parties.length === 0) return;
+      try {
+        setBalancesLoading(true);
+        const results = await Promise.all(parties.map(async (p) => {
+          const res = await getTransactionsByParty(p._id, { limit: 1000 });
+          const items = res?.data?.items || [];
+          // Compute running total based on party type and transaction type
+          let total = 0;
+          for (const t of items.sort((a, b) => new Date(a.date) - new Date(b.date))) {
+            if (partyType === 'suppliers') {
+              if (t.type === 'Purchase') total += t.amount;
+              else if (t.type === 'Payment Out') total -= t.amount;
+              else total -= t.amount;
+            } else {
+              if (t.type === 'Sale') total += t.amount;
+              else if (t.type === 'Payment In') total -= t.amount;
+              else total -= t.amount;
+            }
+          }
+          return { key: `${partyType === 'suppliers' ? 'supplier' : 'customer'}:${p._id}`, total };
+        }));
+        setBalancesByKey((prev) => {
+          const next = { ...prev };
+          for (const r of results) next[r.key] = r.total;
+          return next;
+        });
+      } catch (e) {
+        console.error('Failed to compute balances', e);
+      } finally {
+        setBalancesLoading(false);
+      }
+    };
+
+    // Only compute balances if data has changed and we're not already loading
+    const dataChanged = 
+      JSON.stringify(suppliers.map(s => s._id)) !== JSON.stringify(lastComputedData.suppliers) ||
+      JSON.stringify(customers.map(c => c._id)) !== JSON.stringify(lastComputedData.customers);
+    
+    if (dataChanged && !balancesLoading && (suppliers.length > 0 || customers.length > 0)) {
+      setLastComputedData({
+        suppliers: suppliers.map(s => s._id),
+        customers: customers.map(c => c._id)
+      });
+      computeBalanceForType(suppliers, 'suppliers');
+      computeBalanceForType(customers, 'customers');
+    }
+  }, [suppliers, customers]);
+
+  const getComputedBalance = (party, tab) => {
+    const typeKey = tab === 'suppliers' ? 'supplier' : 'customer';
+    const key = `${typeKey}:${party._id}`;
+    const computed = balancesByKey[key];
+    
+    // If balances are still loading, return null to show loading state
+    if (balancesLoading && typeof computed !== 'number') {
+      return null;
+    }
+    
+    // Return computed balance if available, otherwise fallback to party balance
+    return typeof computed === 'number' ? computed : (party.balance || 0);
   };
 
   const validateForm = () => {
@@ -128,18 +196,28 @@ const PartiesPage = () => {
 
   const filteredAndSortedData = () => {
     const data = activeTab === 'suppliers' ? suppliers : customers;
-    let filtered = data.filter(item =>
-      item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.contactInfo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.balance.toString().includes(searchTerm)
-    );
+    let filtered = data.filter(item => {
+      const bal = getComputedBalance(item, activeTab);
+      return (
+        item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.contactInfo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (bal !== null && bal.toString().includes(searchTerm))
+      );
+    });
 
     filtered.sort((a, b) => {
       switch (sortBy) {
         case 'name':
           return a.name.localeCompare(b.name);
-        case 'balance':
-          return b.balance - a.balance;
+        case 'balance': {
+          const balA = getComputedBalance(a, activeTab);
+          const balB = getComputedBalance(b, activeTab);
+          // Handle loading state - put items with null balance at the end
+          if (balA === null && balB === null) return 0;
+          if (balA === null) return 1;
+          if (balB === null) return -1;
+          return balB - balA;
+        }
         case 'lastTransaction':
           return new Date(b.updatedAt) - new Date(a.updatedAt);
         default:
@@ -320,13 +398,32 @@ const PartiesPage = () => {
                       <div className="text-sm text-gray-900">{formatContact(party.contactInfo)}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        party.balance >= 0 
+                      {(() => {
+                        const bal = getComputedBalance(party, activeTab);
+                        
+                        // Show loading state if balance is being computed
+                        if (bal === null) {
+                          return (
+                            <div className="inline-flex items-center px-2 py-1 text-xs text-gray-500">
+                              <svg className="animate-spin -ml-1 mr-2 h-3 w-3 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                              </svg>
+                              Calculating...
+                            </div>
+                          );
+                        }
+                        
+                        const positive = bal >= 0;
+                        const cls = positive
                           ? (activeTab === 'suppliers' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800')
-                          : (activeTab === 'suppliers' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800')
-                      }`}>
-                        ${party.balance.toLocaleString()}
-                      </span>
+                          : (activeTab === 'suppliers' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800');
+                        return (
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${cls}`}>
+                            ${Number(bal || 0).toLocaleString()}
+                          </span>
+                        );
+                      })()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {new Date(party.updatedAt).toLocaleDateString()}

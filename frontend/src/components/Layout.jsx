@@ -13,11 +13,15 @@ const Layout = ({ children }) => {
     navigate('/login');
   };
 
-  const navigation = [
-    { name: 'Dashboard', href: '/', icon: '📊' },
-    { name: 'Parties', href: '/parties', icon: '👥' },
-    { name: 'Transactions', href: '/transactions', icon: '📝' },
-  ];
+  const navigation = user?.role === 'admin'
+    ? [
+        { name: 'Admin', href: '/admin', icon: '🛡️' },
+      ]
+    : [
+        { name: 'Dashboard', href: '/', icon: '📊' },
+        { name: 'Parties', href: '/parties', icon: '👥' },
+        { name: 'Transactions', href: '/transactions', icon: '📝' },
+      ];
 
   const isActive = (path) => {
     if (path === '/') {
@@ -26,9 +30,19 @@ const Layout = ({ children }) => {
     return location.pathname.startsWith(path);
   };
 
+  const isAuthPage = (
+    location.pathname === '/login' ||
+    location.pathname === '/register' ||
+    location.pathname === '/verify' ||
+    location.pathname === '/forgot-password' ||
+    location.pathname === '/forgot-password/verify' ||
+    location.pathname === '/forgot-password/reset'
+  );
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Sidebar */}
+      {!isAuthPage && (
       <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} transition-transform duration-300 ease-in-out lg:translate-x-0`}>
         <div className="flex items-center justify-between h-16 px-6 border-b">
           <div className="flex items-center">
@@ -92,10 +106,12 @@ const Layout = ({ children }) => {
           </div>
         </div>
       </div>
+      )}
 
       {/* Main content */}
-      <div className="lg:pl-64">
+      <div className={isAuthPage ? '' : 'lg:pl-64'}>
         {/* Top bar */}
+        {!isAuthPage && (
         <div className="sticky top-0 z-30 bg-white shadow-sm border-b">
           <div className="h-16 flex items-center justify-between px-4 sm:px-6 lg:px-8">
             <div className="flex items-center gap-3">
@@ -117,6 +133,7 @@ const Layout = ({ children }) => {
             </div>
           </div>
         </div>
+        )}
 
         {/* Page content */}
         <main className="p-4 sm:p-6 lg:p-8">

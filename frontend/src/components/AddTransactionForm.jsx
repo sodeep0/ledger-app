@@ -1,6 +1,7 @@
 // src/components/AddTransactionForm.jsx
 import { useState, useMemo, useEffect } from 'react';
 import { createTransaction, updateTransaction } from '../services/apiService';
+import AlertDialog from './AlertDialog';
 
 // Helper to get today's date in YYYY-MM-DD format
 const getTodayString = () => new Date().toISOString().split('T')[0];
@@ -18,6 +19,7 @@ const AddTransactionForm = ({ suppliers, customers, onSuccess, initialData }) =>
   
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [alert, setAlert] = useState({ open: false, title: '', message: '' });
 
   useEffect(() => {
     if (initialData) {
@@ -105,17 +107,26 @@ const AddTransactionForm = ({ suppliers, customers, onSuccess, initialData }) =>
       } else {
         await createTransaction(formData);
       }
+      // Simple toast
+      try {
+        const el = document.createElement('div');
+        el.className = 'fixed top-4 right-4 bg-green-600 text-white px-4 py-2 rounded shadow z-50';
+        el.textContent = initialData ? 'Transaction updated successfully' : 'Transaction created successfully';
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 2000);
+      } catch {}
       onSuccess(); // Notify parent component to refresh data
     } catch (error) {
       console.error('Failed to save transaction', error);
       const errorMessage = error.response?.data?.message || 'Failed to save transaction. Please try again.';
-      alert(errorMessage);
+      setAlert({ open: true, title: 'Save Failed', message: errorMessage });
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
+    <>
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -255,6 +266,14 @@ const AddTransactionForm = ({ suppliers, customers, onSuccess, initialData }) =>
         </button>
       </div>
     </form>
+    /* Alert Dialog */
+    <AlertDialog
+      isOpen={alert.open}
+      title={alert.title}
+      message={alert.message}
+      onClose={() => setAlert({ open: false, title: '', message: '' })}
+    />
+    </>
   );
 };
 

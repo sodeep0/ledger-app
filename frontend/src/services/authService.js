@@ -28,6 +28,18 @@ const authService = {
   register,
   login,
   logout,
+  requestPasswordReset: async (email) => {
+    const response = await axios.post(API_URL + 'forgot-password', { email });
+    return response.data;
+  },
+  verifyResetCode: async (email, code) => {
+    const response = await axios.post(API_URL + 'forgot-password/verify', { email, code });
+    return response.data;
+  },
+  resetPassword: async (email, code, newPassword) => {
+    const response = await axios.post(API_URL + 'forgot-password/reset', { email, code, newPassword });
+    return response.data;
+  }
 };
 
 export default authService;

@@ -16,11 +16,14 @@ connectDB();
 const app = express();
 
 //set the port from environment variable or default to 5000
-
+const corsOptions = {
+    origin: process.env.CORS_ORIGIN,
+    optionsSuccessStatus: 200 // For legacy browser support
+  };
 const PORT = process.env.PORT || 5000;
 
 // Middleware
-app.use(cors()); // Enable CORS for all routes
+app.use(cors(corsOptions)); // Enable CORS for all routes
 app.use(express.json()); // Parse JSON request bodies
 app.use('/api/suppliers', supplierRoutes);
 app.use('/api/customers', customerRoutes);

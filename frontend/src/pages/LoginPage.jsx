@@ -3,28 +3,25 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import authService from '../services/authService';
 import AlertDialog from '../components/AlertDialog';
+import { Button, Input, FormField } from '../components/ui';
+import { useForm } from '../hooks';
 
 const LoginPage = () => {
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-  });
   const navigate = useNavigate();
-
-  const { email, password } = formData;
   const [alert, setAlert] = useState({ open: false, title: '', message: '' });
 
-  const onChange = (e) => {
-    setFormData((prevState) => ({
-      ...prevState,
-      [e.target.name]: e.target.value,
-    }));
+  // Form validation
+  const validate = (values) => {
+    const errors = {};
+    if (!values.email) errors.email = 'Email is required';
+    if (!values.password) errors.password = 'Password is required';
+    return errors;
   };
 
-  const onSubmit = async (e) => {
-    e.preventDefault();
+  // Form submission
+  const handleSubmit = async (values) => {
     try {
-      const user = await authService.login({ email, password });
+      const user = await authService.login(values);
       if (user.role === 'admin') {
         navigate('/admin');
       } else if (user.approvalStatus !== 'approved') {
@@ -52,68 +49,92 @@ const LoginPage = () => {
     }
   };
 
+  const { values, errors, isSubmitting, handleChange, handleSubmit: onSubmit } = useForm(
+    { email: '', password: '' },
+    validate,
+    handleSubmit
+  );
+
+
   return (
-    <div className="flex items-center justify-center min-h-screen">
-      <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-lg shadow-md">
-        <h1 className="text-2xl font-bold text-center">Login to Your Account</h1>
+    <div className="flex items-center justify-center min-h-screen bg-secondary-50">
+      <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-xl shadow-soft">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-secondary-900">Login to Your Account</h1>
+          <p className="mt-2 text-sm text-secondary-600">Welcome back! Please sign in to continue.</p>
+        </div>
+        
         <form onSubmit={onSubmit} className="space-y-6">
-          <div>
-            <label
-              htmlFor="email"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Email Address
-            </label>
-            <input
+          <FormField
+            label="Email Address"
+            name="email"
+            required
+            error={errors.email}
+          >
+            <Input
               type="email"
-              id="email"
               name="email"
-              value={email}
-              onChange={onChange}
-              required
-              className="w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+              value={values.email}
+              onChange={handleChange}
+              error={!!errors.email}
+              leftIcon={
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+              }
             />
-          </div>
-          <div>
-            <label
-              htmlFor="password"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Password
-            </label>
-            <input
+          </FormField>
+          
+          <FormField
+            label="Password"
+            name="password"
+            required
+            error={errors.password}
+          >
+            <Input
               type="password"
-              id="password"
               name="password"
-              value={password}
-              onChange={onChange}
-              required
-              className="w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+              value={values.password}
+              onChange={handleChange}
+              error={!!errors.password}
+              leftIcon={
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+              }
             />
-          </div>
+          </FormField>
+          
           <div className="flex justify-end">
             <button
               type="button"
               onClick={() => navigate('/forgot-password')}
-              className="text-sm text-indigo-600 hover:underline"
+              className="text-sm text-primary-600 hover:text-primary-700 hover:underline transition-colors"
             >
               Forgot password?
             </button>
           </div>
+          
           <div className="space-y-3">
-            <button
+            <Button
               type="submit"
-              className="w-full px-4 py-2 font-bold text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              variant="primary"
+              size="lg"
+              loading={isSubmitting}
+              className="w-full"
             >
-              Login
-            </button>
-            <button
+              {isSubmitting ? 'Signing in...' : 'Sign In'}
+            </Button>
+            
+            <Button
               type="button"
+              variant="outline"
+              size="lg"
               onClick={() => navigate('/register')}
-              className="w-full px-4 py-2 font-bold text-indigo-700 bg-indigo-50 rounded-md hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              className="w-full"
             >
-              Register
-            </button>
+              Create Account
+            </Button>
           </div>
         </form>
       </div>

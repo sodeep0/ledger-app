@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import authService from '../services/authService';
+import logoImage from '../assets/logo_ledgerpro.jpg';
 
 const Layout = ({ children }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -45,12 +46,14 @@ const Layout = ({ children }) => {
       {!isAuthPage && (
       <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} transition-transform duration-300 ease-in-out lg:translate-x-0`}>
         <div className="flex items-center justify-between h-16 px-6 border-b">
-          <div className="flex items-center">
-            <div className="w-8 h-8 bg-red-500 rounded-lg flex items-center justify-center mr-3">
-              <span className="text-white font-bold text-sm">L</span>
+                      <div className="flex items-center">
+              <img 
+                src={logoImage} 
+                alt="LedgerPro Logo" 
+                className="w-16 h-16 rounded-lg object-contain"
+              />
+              <span className="ml-2 text-base font-bold text-gray-900">LedgerPro</span>
             </div>
-            <h1 className="text-xl font-bold text-gray-900">LedgerPro</h1>
-          </div>
           <button
             onClick={() => setIsSidebarOpen(false)}
             className="lg:hidden p-2 rounded-md text-gray-400 hover:text-gray-600"
@@ -124,12 +127,14 @@ const Layout = ({ children }) => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
               </button>
-              <div className="flex items-center">
-                <div className="w-8 h-8 bg-red-500 rounded-lg flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">L</span>
+                              <div className="flex items-center">
+                  <img 
+                    src={logoImage} 
+                    alt="LedgerPro Logo" 
+                    className="w-16 h-16 rounded-lg object-contain"
+                  />
+                  <span className="ml-2 text-base font-bold text-gray-900">LedgerPro</span>
                 </div>
-                <span className="ml-2 text-base font-bold text-gray-900">LedgerPro</span>
-              </div>
             </div>
           </div>
         </div>

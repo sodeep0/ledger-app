@@ -10,7 +10,7 @@ const DashboardPage = () => {
   const [summaryData, setSummaryData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [selectedPeriod, setSelectedPeriod] = useState('all-time');
+  const [selectedPeriod, setSelectedPeriod] = useState('this-week');
   const [chartToggle, setChartToggle] = useState('customers'); // 'customers' or 'suppliers'
   const [loadingProgress, setLoadingProgress] = useState({ current: 0, total: 0, message: '' });
   const [useSummaryEndpoint, setUseSummaryEndpoint] = useState(true); // Default to fast mode
@@ -354,11 +354,8 @@ const DashboardPage = () => {
           <div>
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Dashboard</h1>
             <p className="text-gray-600">Business performance overview</p>
-            {transactions.length > 0 && (
-              <p className="text-sm text-gray-500 mt-1">
-                {transactions.length.toLocaleString()} transactions loaded
-              </p>
-            )}
+
+             
           </div>
           <div className="w-full lg:w-auto flex flex-col gap-3">
             <div className="grid grid-cols-2 gap-3 w-full">

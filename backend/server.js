@@ -30,6 +30,10 @@ app.use('/api/customers', customerRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/transactions', transactionRoutes);
 //start the server and listen for incoming requests
+// In server.js
+app.get('/', (req, res) => {
+    res.status(200).send('Server is awake!');
+  });
 app.listen(PORT,()=>{
     console.log(`Server is running on port ${PORT}`);
 });

@@ -19,14 +19,14 @@ const Layout = ({ children }) => {
         { name: 'Admin', href: '/admin', icon: '🛡️' },
       ]
     : [
-        { name: 'Dashboard', href: '/', icon: '📊' },
+        { name: 'Dashboard', href: '/dashboard', icon: '📊' },
         { name: 'Parties', href: '/parties', icon: '👥' },
         { name: 'Transactions', href: '/transactions', icon: '📝' },
       ];
 
   const isActive = (path) => {
-    if (path === '/') {
-      return location.pathname === '/';
+    if (path === '/dashboard') {
+      return location.pathname === '/dashboard';
     }
     return location.pathname.startsWith(path);
   };
@@ -40,10 +40,12 @@ const Layout = ({ children }) => {
     location.pathname === '/forgot-password/reset'
   );
 
+  const isLandingPage = location.pathname === '/';
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Sidebar */}
-      {!isAuthPage && (
+      {!isAuthPage && !isLandingPage && (
       <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} transition-transform duration-300 ease-in-out lg:translate-x-0`}>
         <div className="flex items-center justify-between h-16 px-6 border-b">
                       <div className="flex items-center">
@@ -112,9 +114,9 @@ const Layout = ({ children }) => {
       )}
 
       {/* Main content */}
-      <div className={isAuthPage ? '' : 'lg:pl-64'}>
+      <div className={isAuthPage || isLandingPage ? '' : 'lg:pl-64'}>
         {/* Top bar */}
-        {!isAuthPage && (
+        {!isAuthPage && !isLandingPage && (
         <div className="sticky top-0 z-30 bg-white shadow-sm border-b">
           <div className="h-16 flex items-center justify-between px-4 sm:px-6 lg:px-8">
             <div className="flex items-center gap-3">
@@ -141,7 +143,7 @@ const Layout = ({ children }) => {
         )}
 
         {/* Page content */}
-        <main className="p-4 sm:p-6 lg:p-8">
+        <main className={isLandingPage ? '' : 'p-4 sm:p-6 lg:p-8'}>
           {children}
         </main>
       </div>

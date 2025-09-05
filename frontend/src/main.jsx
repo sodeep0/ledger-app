@@ -6,6 +6,7 @@ import App from './App.jsx';
 import './index.css';
 
 // Import your page components
+import LandingPage from './pages/LandingPage.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import RegisterPage from './pages/RegisterPage.jsx';
 import DashboardPage from './pages/DashboardPage.jsx';
@@ -31,36 +32,10 @@ const router = createBrowserRouter([
     element: <App />,
     errorElement: <ErrorPage />,
     children: [
-      { index: true, element: (
-          <NonAdminApprovedRoute>
-            <DashboardPage />
-          </NonAdminApprovedRoute>
-        ) },
-      { path: 'parties', element: (
-          <NonAdminApprovedRoute>
-            <PartiesPage />
-          </NonAdminApprovedRoute>
-        ) },
-      { path: 'parties/:partyType/:partyId', element: (
-          <NonAdminApprovedRoute>
-            <PartyDetailsPage />
-          </NonAdminApprovedRoute>
-        ) },
-      { path: 'transactions', element: (
-          <NonAdminApprovedRoute>
-            <TransactionsPage />
-          </NonAdminApprovedRoute>
-        ) },
-      { path: 'transactions/batch', element: (
-          <NonAdminApprovedRoute>
-            <BatchTransactionsPage />
-          </NonAdminApprovedRoute>
-        ) },
-      { path: 'admin', element: (
-          <AdminRoute>
-            <AdminDashboardPage />
-          </AdminRoute>
-        ) },
+      // Landing page (public)
+      { index: true, element: <LandingPage /> },
+      
+      // Public routes (no authentication required)
       { path: 'login', element: (
           <PublicRoute>
             <LoginPage />
@@ -91,6 +66,41 @@ const router = createBrowserRouter([
             <ResetPasswordPage />
           </PublicRoute>
         ) },
+      
+      // Protected routes (authentication required)
+      { path: 'dashboard', element: (
+          <NonAdminApprovedRoute>
+            <DashboardPage />
+          </NonAdminApprovedRoute>
+        ) },
+      { path: 'parties', element: (
+          <NonAdminApprovedRoute>
+            <PartiesPage />
+          </NonAdminApprovedRoute>
+        ) },
+      { path: 'parties/:partyType/:partyId', element: (
+          <NonAdminApprovedRoute>
+            <PartyDetailsPage />
+          </NonAdminApprovedRoute>
+        ) },
+      { path: 'transactions', element: (
+          <NonAdminApprovedRoute>
+            <TransactionsPage />
+          </NonAdminApprovedRoute>
+        ) },
+      { path: 'transactions/batch', element: (
+          <NonAdminApprovedRoute>
+            <BatchTransactionsPage />
+          </NonAdminApprovedRoute>
+        ) },
+      
+      // Admin routes
+      { path: 'admin', element: (
+          <AdminRoute>
+            <AdminDashboardPage />
+          </AdminRoute>
+        ) },
+      
       // Catch-all route for undefined pages
       { path: '*', element: <ErrorPage /> },
     ],

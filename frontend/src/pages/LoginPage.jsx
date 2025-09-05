@@ -27,7 +27,7 @@ const LoginPage = () => {
       } else if (user.approvalStatus !== 'approved') {
         setAlert({ open: true, title: 'Account Pending', message: 'Your account is pending approval. You will be notified once it is approved.' });
       } else {
-        navigate('/');
+        navigate('/dashboard');
       }
     } catch (error) {
       console.error('Login failed', error);

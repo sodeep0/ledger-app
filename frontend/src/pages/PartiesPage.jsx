@@ -1,24 +1,58 @@
+/**
+ * PartiesPage Component
+ * 
+ * This component manages the display and interaction with suppliers and customers.
+ * It provides functionality to:
+ * - View lists of suppliers and customers with computed balances
+ * - Add new parties (suppliers/customers)
+ * - Edit existing party information
+ * - Navigate to individual party detail pages
+ * - Search and sort party data
+ * 
+ * Key Features:
+ * - Real-time balance calculation from transaction history
+ * - Responsive design with mobile-friendly interface
+ * - Optimized performance with memoized calculations
+ * - Consistent UI using the design system
+ */
+
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getSuppliers, getCustomers, createSupplier, createCustomer, updateSupplier, updateCustomer, deleteSupplier, deleteCustomer, getTransactionsByParty } from '../services/apiService';
 import Modal from '../components/Modal';
+import { Button, Input, FormField, Toast } from '../components/ui';
+import { useForm, useToast } from '../hooks';
+import { formatCurrency, calculateBalance, filterBySearch, sortBy } from '../utils';
 
 const PartiesPage = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('suppliers');
-  const [suppliers, setSuppliers] = useState([]);
-  const [customers, setCustomers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState('name');
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingParty, setEditingParty] = useState(null);
-  const [formData, setFormData] = useState({ name: '', contactInfo: '' });
-  const [formErrors, setFormErrors] = useState({});
-  const [balancesByKey, setBalancesByKey] = useState({}); // key format: `${partyType}:${id}`
-  const [balancesLoading, setBalancesLoading] = useState(false);
-  const [lastComputedData, setLastComputedData] = useState({ suppliers: [], customers: [] });
+  
+  // UI State Management
+  const [activeTab, setActiveTab] = useState('suppliers'); // Current tab: 'suppliers' or 'customers'
+  const [searchTerm, setSearchTerm] = useState(''); // Search filter term
+  const [sortBy, setSortBy] = useState('name'); // Sort criteria: 'name', 'balance', 'lastTransaction'
+  const [isModalOpen, setIsModalOpen] = useState(false); // Modal visibility state
+  
+  // Data State Management
+  const [suppliers, setSuppliers] = useState([]); // Suppliers list
+  const [customers, setCustomers] = useState([]); // Customers list
+  const [loading, setLoading] = useState(true); // Initial data loading state
+  const [error, setError] = useState(null); // Error state for API calls
+  
+  // Form State Management
+  const [editingParty, setEditingParty] = useState(null); // Currently editing party
+  const [formData, setFormData] = useState({ name: '', contactInfo: '' }); // Form input values
+  const [formErrors, setFormErrors] = useState({}); // Form validation errors
+  const [isSubmitting, setIsSubmitting] = useState(false); // Form submission state
+  
+  // Balance Calculation State
+  // Optimized balance calculation to avoid redundant API calls
+  const [balancesByKey, setBalancesByKey] = useState({}); // Cached balances: `${partyType}:${id}`
+  const [balancesLoading, setBalancesLoading] = useState(false); // Balance calculation loading state
+  const [lastComputedData, setLastComputedData] = useState({ suppliers: [], customers: [] }); // Track data changes
+  
+  // Toast Notification State
+  const [toast, setToast] = useState({ show: false, message: '' });
 
   useEffect(() => {
     fetchData();
@@ -42,37 +76,50 @@ const PartiesPage = () => {
     }
   };
 
-  // Compute balances from all transactions for each party
+  /**
+   * Balance Calculation Effect
+   * 
+   * This effect computes real-time balances for all parties by:
+   * 1. Fetching transaction history for each party
+   * 2. Calculating running totals based on transaction types
+   * 3. Caching results to avoid redundant API calls
+   * 4. Only recalculating when party data changes
+   * 
+   * Balance Logic:
+   * - Suppliers: Purchase increases balance, Payment Out decreases balance
+   * - Customers: Sale increases balance, Payment In decreases balance
+   */
   useEffect(() => {
     const computeBalanceForType = async (parties, partyType) => {
       if (!parties || parties.length === 0) return;
+      
       try {
         setBalancesLoading(true);
-        const results = await Promise.all(parties.map(async (p) => {
-          const res = await getTransactionsByParty(p._id, { limit: 1000 });
-          const items = res?.data?.items || [];
-          // Compute running total based on party type and transaction type
-          let total = 0;
-          for (const t of items.sort((a, b) => new Date(a.date) - new Date(b.date))) {
-            if (partyType === 'suppliers') {
-              if (t.type === 'Purchase') total += t.amount;
-              else if (t.type === 'Payment Out') total -= t.amount;
-              else total -= t.amount;
-            } else {
-              if (t.type === 'Sale') total += t.amount;
-              else if (t.type === 'Payment In') total -= t.amount;
-              else total -= t.amount;
-            }
-          }
-          return { key: `${partyType === 'suppliers' ? 'supplier' : 'customer'}:${p._id}`, total };
+        
+        // Process all parties in parallel for better performance
+        const results = await Promise.all(parties.map(async (party) => {
+          const res = await getTransactionsByParty(party._id, { limit: 1000 });
+          const transactions = res?.data?.items || [];
+          
+          // Calculate balance using utility function for consistency
+          const balance = calculateBalance(transactions, partyType);
+          
+          return { 
+            key: `${partyType === 'suppliers' ? 'supplier' : 'customer'}:${party._id}`, 
+            total: balance 
+          };
         }));
+        
+        // Update cached balances
         setBalancesByKey((prev) => {
           const next = { ...prev };
-          for (const r of results) next[r.key] = r.total;
+          for (const result of results) {
+            next[result.key] = result.total;
+          }
           return next;
         });
-      } catch (e) {
-        console.error('Failed to compute balances', e);
+      } catch (error) {
+        console.error('Failed to compute balances', error);
       } finally {
         setBalancesLoading(false);
       }
@@ -129,10 +176,18 @@ const PartiesPage = () => {
     return /^[\+]?[1-9][\d]{0,15}$/.test(phone.replace(/[\s\-\(\)]/g, ''));
   };
 
+  const showToast = (message) => {
+    setToast({ show: true, message });
+    setTimeout(() => {
+      setToast({ show: false, message: '' });
+    }, 2000);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
 
+    setIsSubmitting(true);
     try {
       if (editingParty) {
         if (activeTab === 'suppliers') {
@@ -140,12 +195,14 @@ const PartiesPage = () => {
         } else {
           await updateCustomer(editingParty._id, formData);
         }
+        showToast('Party updated successfully!');
       } else {
         if (activeTab === 'suppliers') {
           await createSupplier(formData);
         } else {
           await createCustomer(formData);
         }
+        showToast('Party created successfully!');
       }
       
       setIsModalOpen(false);
@@ -155,7 +212,9 @@ const PartiesPage = () => {
       fetchData();
     } catch (error) {
       console.error('Failed to save party', error);
-      alert('Failed to save party. Please try again.');
+      setFormErrors({ form: error.response?.data?.message || 'An unexpected error occurred.' });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -188,6 +247,7 @@ const PartiesPage = () => {
     setFormErrors({});
     setIsModalOpen(true);
   };
+
 
   const handlePartyClick = (party) => {
     const partyType = activeTab === 'suppliers' ? 'supplier' : 'customer';
@@ -261,10 +321,10 @@ const PartiesPage = () => {
   if (error) {
     return (
       <div className="text-center py-8">
-        <div className="text-red-500 mb-4">{error}</div>
+        <div className="text-error-600 mb-4">{error}</div>
         <button
           onClick={fetchData}
-          className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+          className="px-4 py-2 bg-error-600 text-white rounded hover:bg-error-700 transition-colors"
         >
           Try Again
         </button>
@@ -287,7 +347,7 @@ const PartiesPage = () => {
               onClick={() => setActiveTab('suppliers')}
               className={`py-2 px-1 border-b-2 font-medium text-sm ${
                 activeTab === 'suppliers'
-                  ? 'border-red-500 text-red-600'
+                  ? 'border-primary-500 text-primary-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
@@ -297,7 +357,7 @@ const PartiesPage = () => {
               onClick={() => setActiveTab('customers')}
               className={`py-2 px-1 border-b-2 font-medium text-sm ${
                 activeTab === 'customers'
-                  ? 'border-red-500 text-red-600'
+                  ? 'border-primary-500 text-primary-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
@@ -321,7 +381,7 @@ const PartiesPage = () => {
               placeholder="Search by name, contact, or balance..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500 sm:text-sm"
+              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
             />
           </div>
         </div>
@@ -330,7 +390,7 @@ const PartiesPage = () => {
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
-            className="border border-gray-300 rounded-md px-3 py-2 bg-white text-sm focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500"
+            className="border border-gray-300 rounded-md px-3 py-2 bg-white text-sm focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
           >
             <option value="name">Sort by Name</option>
             <option value="balance">Sort by Balance</option>
@@ -339,7 +399,7 @@ const PartiesPage = () => {
           
           <button
             onClick={handleAddNew}
-            className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+            className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors"
           >
             Add {activeTab === 'suppliers' ? 'Supplier' : 'Customer'}
           </button>
@@ -360,7 +420,7 @@ const PartiesPage = () => {
             <div className="mt-6">
               <button
                 onClick={handleAddNew}
-                className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-500 hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors"
               >
                 Add {activeTab === 'suppliers' ? 'Supplier' : 'Customer'}
               </button>
@@ -416,8 +476,8 @@ const PartiesPage = () => {
                         
                         const positive = bal >= 0;
                         const cls = positive
-                          ? (activeTab === 'suppliers' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800')
-                          : (activeTab === 'suppliers' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800');
+                          ? (activeTab === 'suppliers' ? 'bg-warning-100 text-warning-800' : 'bg-success-100 text-success-800')
+                          : (activeTab === 'suppliers' ? 'bg-success-100 text-success-800' : 'bg-error-100 text-error-800');
                         return (
                           <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${cls}`}>
                             ${Number(bal || 0).toLocaleString()}
@@ -434,7 +494,7 @@ const PartiesPage = () => {
                           e.stopPropagation(); // Prevent row click when editing
                           handleEdit(party);
                         }}
-                        className="text-red-600 hover:text-red-900 mr-4"
+                        className="text-primary-600 hover:text-primary-900 mr-4 transition-colors"
                       >
                         Edit
                       </button>
@@ -448,6 +508,14 @@ const PartiesPage = () => {
         )}
       </div>
 
+      {/* Toast */}
+      <Toast 
+        message={toast.message} 
+        show={toast.show} 
+        type="success"
+        onClose={() => setToast({ show: false, message: '' })}
+      />
+
       {/* Modal */}
       <Modal
         isOpen={isModalOpen}
@@ -459,62 +527,61 @@ const PartiesPage = () => {
         }}
         title={editingParty ? `Edit ${activeTab.slice(0, -1)}` : `Add New ${activeTab.slice(0, -1)}`}
       >
-        <form onSubmit={handleSubmit}>
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Name *
-            </label>
-            <input
+        <form onSubmit={handleSubmit} className="space-y-6 p-1">
+          <FormField 
+            label="Name" 
+            name="name" 
+            required 
+            error={formErrors.name}
+          >
+            <Input
               type="text"
+              name="name"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-red-500 ${
-                formErrors.name ? 'border-red-500' : 'border-gray-300'
-              }`}
+              error={!!formErrors.name}
+              leftIcon={
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              }
               placeholder="Enter name"
             />
-            {formErrors.name && (
-              <p className="mt-1 text-sm text-red-600">{formErrors.name}</p>
-            )}
-          </div>
+          </FormField>
           
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Contact Information *
-            </label>
-            <input
+          <FormField 
+            label="Contact Information" 
+            name="contactInfo" 
+            required 
+            error={formErrors.contactInfo}
+          >
+            <Input
               type="text"
+              name="contactInfo"
               value={formData.contactInfo}
               onChange={(e) => setFormData({ ...formData, contactInfo: e.target.value })}
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-red-500 ${
-                formErrors.contactInfo ? 'border-red-500' : 'border-gray-300'
-              }`}
+              error={!!formErrors.contactInfo}
+              leftIcon={
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+              }
               placeholder="Enter email or phone number"
             />
-            {formErrors.contactInfo && (
-              <p className="mt-1 text-sm text-red-600">{formErrors.contactInfo}</p>
-            )}
-          </div>
+          </FormField>
           
-          <div className="flex justify-end space-x-3">
-            <button
-              type="button"
-              onClick={() => {
-                setIsModalOpen(false);
-                setEditingParty(null);
-                setFormData({ name: '', contactInfo: '' });
-                setFormErrors({});
-              }}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-            >
-              Cancel
-            </button>
-            <button
+          {formErrors.form && <p className="text-sm text-error-600 text-center">{formErrors.form}</p>}
+          
+          <div className="pt-4">
+            <Button
               type="submit"
-              className="px-4 py-2 text-sm font-medium text-white bg-red-500 border border-transparent rounded-md hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+              variant="primary"
+              size="lg"
+              loading={isSubmitting}
+              className="w-full"
             >
-              {editingParty ? 'Update' : 'Create'}
-            </button>
+              {editingParty ? 'Update Party' : 'Create Party'}
+            </Button>
           </div>
         </form>
       </Modal>

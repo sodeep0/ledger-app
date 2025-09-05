@@ -6,7 +6,7 @@
  * 
  * Environment Variables Setup:
  * 1. Create a .env file in the frontend/ directory (not backend/)
- * 2. Add: VITE_API_URL=http://localhost:5000/api
+ * 2. Add: VITE_API_URL=http://localhost:5001/api
  * 3. For production, update the URL to your deployed backend
  * 
  * Note: Vite uses import.meta.env for environment variables, not process.env

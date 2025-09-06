@@ -189,19 +189,19 @@ const BatchTransactionsPage = () => {
         <div className="flex items-center mb-4">
           <button
             onClick={() => navigate('/transactions')}
-            className="mr-4 p-2 text-gray-600 hover:text-gray-800"
+            className="mr-4 p-2 text-secondary-600 hover:text-secondary-800"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
           </button>
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Batch Transactions</h1>
-            <p className="text-gray-600">Add multiple transactions at once</p>
+            <h1 className="text-3xl font-bold text-secondary-900">Batch Transactions</h1>
+            <p className="text-secondary-600">Add multiple transactions at once</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-600">Party Type:</span>
+          <span className="text-sm text-secondary-600">Party Type:</span>
           <div className="inline-flex rounded-md shadow-sm" role="group">
             <button
               type="button"
@@ -210,7 +210,7 @@ const BatchTransactionsPage = () => {
                 // Clear party selections and types to avoid invalid combinations
                 setRows(prev => prev.map(r => ({ ...r, partyId: '', partyName: '', type: '' })));
               }}
-              className={`px-3 py-1.5 text-sm border ${globalPartyModel === 'Supplier' ? 'bg-red-600 text-white border-red-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+              className={`px-3 py-1.5 text-sm border ${globalPartyModel === 'Supplier' ? 'bg-primary-600 text-white border-primary-600' : 'bg-white text-secondary-700 border-secondary-300 hover:bg-secondary-50'}`}
             >
               Supplier
             </button>
@@ -220,7 +220,7 @@ const BatchTransactionsPage = () => {
                 setGlobalPartyModel('Customer');
                 setRows(prev => prev.map(r => ({ ...r, partyId: '', partyName: '', type: '' })));
               }}
-              className={`px-3 py-1.5 text-sm border -ml-px ${globalPartyModel === 'Customer' ? 'bg-red-600 text-white border-red-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+              className={`px-3 py-1.5 text-sm border -ml-px ${globalPartyModel === 'Customer' ? 'bg-primary-600 text-white border-primary-600' : 'bg-white text-secondary-700 border-secondary-300 hover:bg-secondary-50'}`}
             >
               Customer
             </button>
@@ -250,7 +250,7 @@ const BatchTransactionsPage = () => {
                       type="date"
                       value={row.date}
                       onChange={(e) => updateRow(idx, { date: e.target.value })}
-                      className="w-full border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500"
+                      className="w-full border border-secondary-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
                     />
                   </td>
                   <td className="px-6 py-2">
@@ -263,29 +263,29 @@ const BatchTransactionsPage = () => {
                           onChange={(e) => { updateRow(idx, { partyName: e.target.value, partyId: '', partyHighlightedIndex: 0 }); openPartyDropdown(idx); }}
                           onFocus={() => openPartyDropdown(idx)}
                           onKeyDown={(e) => handlePartyInputKeyDown(e, idx, row)}
-                          className={`flex-1 border rounded-l-md px-2 py-1 text-sm min-w-[12rem] focus:outline-none focus:ring-1 focus:ring-red-500 ${row.partyId ? 'border-gray-300' : (row.partyName ? 'border-red-500' : 'border-gray-300')}`}
+                          className={`flex-1 border rounded-l-md px-2 py-1 text-sm min-w-[12rem] focus:outline-none focus:ring-1 focus:ring-primary-500 ${row.partyId ? 'border-secondary-300' : (row.partyName ? 'border-error-500' : 'border-secondary-300')}`}
                         />
                         <button
                           type="button"
                           onClick={() => (row.partyDropdownOpen ? closeAllDropdowns() : openPartyDropdown(idx))}
-                          className="px-2 py-1 border border-l-0 border-gray-300 rounded-r-md text-sm bg-white hover:bg-gray-50"
+                          className="px-2 py-1 border border-l-0 border-secondary-300 rounded-r-md text-sm bg-white hover:bg-secondary-50"
                         >
-                          <svg className="w-4 h-4 text-gray-600" viewBox="0 0 20 20" fill="currentColor">
+                          <svg className="w-4 h-4 text-secondary-600" viewBox="0 0 20 20" fill="currentColor">
                             <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clipRule="evenodd" />
                           </svg>
                         </button>
                       </div>
                       {row.partyDropdownOpen && (
-                        <ul className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-md shadow max-h-64 overflow-auto">
+                        <ul className="absolute z-20 mt-1 w-full bg-white border border-secondary-200 rounded-md shadow max-h-64 overflow-auto">
                           {getRowFilteredOptions(row).length === 0 ? (
-                            <li className="px-3 py-2 text-sm text-gray-500">No matches</li>
+                            <li className="px-3 py-2 text-sm text-secondary-500">No matches</li>
                           ) : (
                             getRowFilteredOptions(row).map((p, optIdx) => (
                               <li
                                 key={`${p.type}-${p._id}`}
                                 onMouseDown={(e) => e.preventDefault()}
                                 onClick={() => selectPartyForRow(idx, p)}
-                                className={`px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 ${row.partyHighlightedIndex === optIdx ? 'bg-gray-100' : ''}`}
+                                className={`px-3 py-2 text-sm cursor-pointer hover:bg-secondary-50 ${row.partyHighlightedIndex === optIdx ? 'bg-secondary-100' : ''}`}
                               >
                                 {p.name}
                               </li>
@@ -301,14 +301,14 @@ const BatchTransactionsPage = () => {
                       placeholder="Description (optional)"
                       value={row.description}
                       onChange={(e) => updateRow(idx, { description: e.target.value })}
-                      className="w-full min-w-[9rem] border border-gray-300 rounded-md px-2 py-1 text-sm"
+                      className="w-full min-w-[9rem] border border-secondary-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
                     />
                   </td>
                   <td className="px-6 py-2">
                     <select
                       value={row.type}
                       onChange={(e) => updateRow(idx, { type: e.target.value })}
-                      className="w-full min-w-[7rem] border border-gray-300 rounded-md px-2 py-1 text-sm"
+                      className="w-full min-w-[7rem] border border-secondary-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
                     >
                       {globalPartyModel === 'Supplier' ? (
                         <>
@@ -333,14 +333,14 @@ const BatchTransactionsPage = () => {
                       placeholder="0.00"
                       value={row.amount}
                       onChange={(e) => updateRow(idx, { amount: e.target.value })}
-                      className="w-32 border border-gray-300 rounded-md px-2 py-1 text-sm text-right focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500"
+                      className="w-32 border border-secondary-300 rounded-md px-2 py-1 text-sm text-right focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
                     />
                   </td>
                   <td className="px-6 py-2">
                     <select
                       value={row.mode}
                       onChange={(e) => updateRow(idx, { mode: e.target.value })}
-                      className="w-full border border-gray-300 rounded-md px-2 py-1 text-sm"
+                      className="w-full border border-secondary-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
                     >
                       <option value="Cash">Cash</option>
                       <option value="Bank">Bank</option>
@@ -350,7 +350,7 @@ const BatchTransactionsPage = () => {
                   <td className="px-6 py-2 text-right">
                     <button
                       onClick={() => removeRow(idx)}
-                      className="text-gray-600 hover:text-gray-900 text-sm"
+                        className="text-secondary-600 hover:text-secondary-900 text-sm"
                     >
                       Remove
                     </button>
@@ -362,21 +362,21 @@ const BatchTransactionsPage = () => {
                   <div className="flex justify-between">
                     <button
                       onClick={addRow}
-                      className="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-md text-sm bg-white hover:bg-gray-50"
+                        className="inline-flex items-center px-3 py-1.5 border border-secondary-300 rounded-md text-sm bg-white hover:bg-secondary-50"
                     >
                       + Add Row
                     </button>
                     <div className="space-x-3">
                       <button
                         onClick={() => navigate('/transactions')}
-                        className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm bg-white hover:bg-gray-50"
+                        className="inline-flex items-center px-4 py-2 border border-secondary-300 rounded-md text-sm bg-white hover:bg-secondary-50"
                       >
                         Cancel
                       </button>
                       <button
                         onClick={handleSubmit}
                         disabled={submitting}
-                        className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50"
+                        className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-50"
                       >
                         {submitting ? 'Saving...' : 'Save All'}
                       </button>

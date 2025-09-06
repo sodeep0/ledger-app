@@ -347,7 +347,7 @@ const DashboardPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="w-full max-w-full overflow-hidden">
       {/* Header with Date Input and Small Cards */}
       <div className="mb-8">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
@@ -486,11 +486,11 @@ const DashboardPage = () => {
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Line Chart - Sales in a week */}
-        <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
+        <div className="bg-white p-4 sm:p-6 rounded-xl shadow-lg border border-gray-100">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-xl font-semibold text-gray-900">Sales This Week</h3>
           </div>
-          <div className="h-80">
+          <div className="h-80 -ml-6 sm:ml-0">
             {!chartsLoaded ? (
               <div className="flex items-center justify-center h-full">
                 <div className="text-center">
@@ -500,7 +500,7 @@ const DashboardPage = () => {
               </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData.salesData}>
+                <LineChart data={chartData.salesData} margin={{ left: 10, right: 10 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                   <XAxis dataKey="day" stroke="#666" />
                   <YAxis stroke="#666" />

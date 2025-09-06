@@ -20,6 +20,7 @@ const Input = forwardRef(({
   errorMessage = '', 
   leftIcon, 
   rightIcon, 
+  onRightIconClick,
   className = '', 
   ...rest 
 }, ref) => {
@@ -64,8 +65,11 @@ const Input = forwardRef(({
       
       {/* Right Icon */}
       {rightIcon && (
-        <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-          <div className="h-5 w-5 text-secondary-400">
+        <div 
+          className={`absolute inset-y-0 right-0 pr-3 flex items-center ${onRightIconClick ? 'cursor-pointer' : 'pointer-events-none'}`}
+          onClick={onRightIconClick}
+        >
+          <div className="h-5 w-5 text-secondary-400 hover:text-secondary-600 transition-colors">
             {rightIcon}
           </div>
         </div>

@@ -2,6 +2,22 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Prevent horizontal overflow on mobile */
+html, body {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+/* Ensure all containers respect viewport width */
+* {
+  box-sizing: border-box;
+}
+
+/* Prevent tables and wide content from causing horizontal scroll */
+.overflow-x-auto {
+  -webkit-overflow-scrolling: touch;
+}
+
 /* Custom animations and utilities */
 @keyframes fade-in-down {
   from {

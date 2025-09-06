@@ -4,7 +4,7 @@ const NonAdminApprovedRoute = ({ children }) => {
   const user = JSON.parse(localStorage.getItem('user'));
 
   if (!user || !user.token) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/" replace />;
   }
 
   if (user.role === 'admin') {
@@ -12,7 +12,7 @@ const NonAdminApprovedRoute = ({ children }) => {
   }
 
   if (user.approvalStatus !== 'approved') {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/" replace />;
   }
 
   return children;

@@ -11,7 +11,8 @@ const Layout = ({ children }) => {
 
   const handleLogout = () => {
     authService.logout();
-    navigate('/login');
+    setIsSidebarOpen(false); // Close sidebar and remove overlay
+    navigate('/');
   };
 
   const navigation = user?.role === 'admin'
@@ -43,7 +44,7 @@ const Layout = ({ children }) => {
   const isLandingPage = location.pathname === '/';
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 w-full max-w-full overflow-x-hidden">
       {/* Sidebar */}
       {!isAuthPage && !isLandingPage && (
       <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} transition-transform duration-300 ease-in-out lg:translate-x-0`}>
@@ -96,7 +97,6 @@ const Layout = ({ children }) => {
               </div>
               <div className="ml-3">
                 <p className="text-sm font-medium text-gray-700">{user?.name || 'User'}</p>
-                <p className="text-xs text-gray-500">{user?.email}</p>
               </div>
             </div>
             <button
@@ -114,37 +114,39 @@ const Layout = ({ children }) => {
       )}
 
       {/* Main content */}
-      <div className={isAuthPage || isLandingPage ? '' : 'lg:pl-64'}>
+      <div className={isAuthPage || isLandingPage ? 'w-full' : 'w-full lg:pl-64'}>
         {/* Top bar */}
         {!isAuthPage && !isLandingPage && (
         <div className="sticky top-0 z-30 bg-white shadow-sm border-b">
-          <div className="h-16 flex items-center justify-between px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center gap-3">
+          <div className="h-16 flex items-center justify-between px-4 sm:px-6 lg:px-8 max-w-full">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
               <button
                 onClick={() => setIsSidebarOpen(true)}
-                className="lg:hidden p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+                className="lg:hidden p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 flex-shrink-0"
                 aria-label="Open sidebar"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
               </button>
-                              <div className="flex items-center">
-                  <img 
-                    src={logoImage} 
-                    alt="LedgerPro Logo" 
-                    className="w-16 h-16 rounded-lg object-contain"
-                  />
-                  <span className="ml-2 text-base font-bold text-gray-900">LedgerPro</span>
-                </div>
+              <div className="flex items-center min-w-0">
+                <img 
+                  src={logoImage} 
+                  alt="LedgerPro Logo" 
+                  className="w-8 h-8 sm:w-12 sm:h-12 lg:w-16 lg:h-16 rounded-lg object-contain flex-shrink-0"
+                />
+                <span className="ml-2 text-sm sm:text-base font-bold text-gray-900 truncate">LedgerPro</span>
+              </div>
             </div>
           </div>
         </div>
         )}
 
         {/* Page content */}
-        <main className={isLandingPage ? '' : 'p-4 sm:p-6 lg:p-8'}>
-          {children}
+        <main className={isLandingPage ? 'w-full' : 'w-full p-4 sm:p-6 lg:p-8 max-w-full'}>
+          <div className="w-full max-w-full overflow-hidden">
+            {children}
+          </div>
         </main>
       </div>
 

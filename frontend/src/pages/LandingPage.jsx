@@ -10,10 +10,20 @@
  * - Professional branding with LedgerPro logo
  */
 
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui';
+import authService from '../services/authService';
 import logoImage from '../assets/logo_ledgerpro.jpg';
+
 const LandingPage = () => {
+  const navigate = useNavigate();
+  const user = JSON.parse(localStorage.getItem('user'));
+  const isLoggedIn = user && user.token;
+
+  const handleLogout = () => {
+    authService.logout();
+    navigate('/');
+  };
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-secondary-50">
       {/* Navigation */}
@@ -27,16 +37,31 @@ const LandingPage = () => {
               <h1 className="text-2xl font-bold text-secondary-900">LedgerPro</h1>
             </div>
             <div className="flex items-center space-x-4">
-              <Link to="/login">
-                <Button variant="outline" size="sm">
-                  Login
-                </Button>
-              </Link>
-              <Link to="/register">
-                <Button variant="primary" size="sm">
-                  Sign Up
-                </Button>
-              </Link>
+              {isLoggedIn ? (
+                <>
+                  <Link to={user.role === 'admin' ? '/admin' : '/dashboard'}>
+                    <Button variant="primary" size="sm">
+                      Dashboard
+                    </Button>
+                  </Link>
+                  <Button variant="outline" size="sm" onClick={handleLogout}>
+                    Logout
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Link to="/login">
+                    <Button variant="outline" size="sm">
+                      Login
+                    </Button>
+                  </Link>
+                  <Link to="/register">
+                    <Button variant="primary" size="sm">
+                      Sign Up
+                    </Button>
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -54,16 +79,26 @@ const LandingPage = () => {
             and transactions with real-time balance tracking and comprehensive reporting.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/register">
-              <Button variant="primary" size="lg" className="w-full sm:w-auto">
-                Get Started Free
-              </Button>
-            </Link>
-            <Link to="/login">
-              <Button variant="outline" size="lg" className="w-full sm:w-auto">
-                Sign In
-              </Button>
-            </Link>
+            {isLoggedIn ? (
+              <Link to={user.role === 'admin' ? '/admin' : '/dashboard'}>
+                <Button variant="primary" size="lg" className="w-full sm:w-auto">
+                  Go to Dashboard
+                </Button>
+              </Link>
+            ) : (
+              <>
+                <Link to="/register">
+                  <Button variant="primary" size="lg" className="w-full sm:w-auto">
+                    Get Started Free
+                  </Button>
+                </Link>
+                <Link to="/login">
+                  <Button variant="outline" size="lg" className="w-full sm:w-auto">
+                    Sign In
+                  </Button>
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -172,16 +207,26 @@ const LandingPage = () => {
             Join thousands of businesses already using LedgerPro to streamline their accounting processes.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/register">
-              <Button variant="secondary" size="lg" className="w-full sm:w-auto">
-                Start Free Trial
-              </Button>
-            </Link>
-            <Link to="/login">
-              <Button variant="outline" size="lg" className="w-full sm:w-auto border-white text-black hover:bg-white hover:text-primary-600">
-                Sign In
-              </Button>
-            </Link>
+            {isLoggedIn ? (
+              <Link to={user.role === 'admin' ? '/admin' : '/dashboard'}>
+                <Button variant="secondary" size="lg" className="w-full sm:w-auto">
+                  Go to Dashboard
+                </Button>
+              </Link>
+            ) : (
+              <>
+                <Link to="/register">
+                  <Button variant="secondary" size="lg" className="w-full sm:w-auto">
+                    Start Free Trial
+                  </Button>
+                </Link>
+                <Link to="/login">
+                  <Button variant="outline" size="lg" className="w-full sm:w-auto border-white text-white hover:bg-white hover:text-primary-600">
+                    Sign In
+                  </Button>
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -190,12 +235,10 @@ const LandingPage = () => {
       <footer className="bg-secondary-900 text-white py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row justify-between items-center">
-            <div className="flex items-center mb-4 md:mb-0">
-              <div className="w-10 h-10 bg-primary-600 rounded-lg flex items-center justify-center mr-3">
-                <img src={logoImage} alt="LedgerPro Logo" className="w-10 h-10 rounded-lg object-contain" />
-              </div>
-              <h3 className="text-2xl font-bold">LedgerPro</h3>
-            </div>
+                         <div className="flex items-center mb-4 md:mb-0">
+               <img src={logoImage} alt="LedgerPro Logo" className="w-10 h-10 rounded-lg object-contain mr-3" />
+               <h3 className="text-2xl font-bold">LedgerPro</h3>
+             </div>
             <div className="text-center md:text-right">
               <p className="text-secondary-400 mb-2">
                 © 2024 LedgerPro. All rights reserved.

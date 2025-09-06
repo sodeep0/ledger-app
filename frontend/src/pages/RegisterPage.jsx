@@ -18,21 +18,64 @@ const RegisterPage = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [errors, setErrors] = useState({});
 
   const onChange = (e) => {
     setFormData((prevState) => ({
       ...prevState,
       [e.target.name]: e.target.value,
     }));
+    // Clear error when user starts typing
+    if (errors[e.target.name]) {
+      setErrors(prev => ({ ...prev, [e.target.name]: '' }));
+    }
+  };
+
+  const handleConfirmPasswordChange = (e) => {
+    setConfirmPassword(e.target.value);
+    // Clear error when user starts typing
+    if (errors.confirmPassword) {
+      setErrors(prev => ({ ...prev, confirmPassword: '' }));
+    }
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+    
+    if (!name.trim()) {
+      newErrors.name = 'Name is required';
+    }
+    
+    if (!email.trim()) {
+      newErrors.email = 'Email is required';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      newErrors.email = 'Please enter a valid email address';
+    }
+    
+    if (!password) {
+      newErrors.password = 'Password is required';
+    } else if (password.length < 8) {
+      newErrors.password = 'Password must be at least 8 characters long';
+    }
+    
+    if (!confirmPassword) {
+      newErrors.confirmPassword = 'Please confirm your password';
+    } else if (password !== confirmPassword) {
+      newErrors.confirmPassword = 'Passwords do not match';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const onSubmit = async (e) => {
     e.preventDefault();
+    
+    if (!validateForm()) {
+      return;
+    }
+    
     try {
-      if (password !== confirmPassword) {
-        setAlert({ open: true, title: 'Validation Error', message: 'Passwords do not match.' });
-        return;
-      }
       await authService.register({ name, email, password });
       navigate('/verify', { state: { email } });
     } catch (error) {
@@ -48,17 +91,20 @@ const RegisterPage = () => {
           <h1 className="text-2xl font-bold text-secondary-900">Create an Account</h1>
           <p className="mt-2 text-sm text-secondary-600">Join LedgerPro and start managing your business finances.</p>
         </div>
-        <form onSubmit={onSubmit} className="space-y-6">
+        <form onSubmit={onSubmit} className="space-y-6" autoComplete="off">
           <FormField
             label="Name"
             name="name"
             required
+            error={errors.name}
           >
             <Input
               type="text"
               name="name"
               value={name}
               onChange={onChange}
+              error={!!errors.name}
+              autoComplete="name"
               leftIcon={
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -71,12 +117,15 @@ const RegisterPage = () => {
             label="Email Address"
             name="email"
             required
+            error={errors.email}
           >
             <Input
               type="email"
               name="email"
               value={email}
               onChange={onChange}
+              error={!!errors.email}
+              autoComplete="email"
               leftIcon={
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -89,12 +138,15 @@ const RegisterPage = () => {
             label="Password"
             name="password"
             required
+            error={errors.password}
           >
             <Input
               type={showPassword ? "text" : "password"}
               name="password"
               value={password}
               onChange={onChange}
+              error={!!errors.password}
+              autoComplete="new-password"
               leftIcon={
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
@@ -120,12 +172,15 @@ const RegisterPage = () => {
             label="Confirm Password"
             name="confirmPassword"
             required
+            error={errors.confirmPassword}
           >
             <Input
               type={showConfirmPassword ? "text" : "password"}
               name="confirmPassword"
               value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
+              onChange={handleConfirmPasswordChange}
+              error={!!errors.confirmPassword}
+              autoComplete="new-password"
               leftIcon={
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />

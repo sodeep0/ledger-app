@@ -35,9 +35,9 @@ const Button = forwardRef(({
   
   // Size styles
   const sizes = {
-    sm: 'px-3 py-1.5 text-sm',
-    md: 'px-4 py-2 text-sm',
-    lg: 'px-6 py-3 text-base',
+    sm: 'px-2 sm:px-3 py-1.5 text-xs sm:text-sm',
+    md: 'px-3 sm:px-4 py-2 text-sm',
+    lg: 'px-4 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base',
   };
   
   // Loading spinner component

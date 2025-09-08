@@ -65,18 +65,18 @@ const AdminDashboardPage = () => {
   };
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
-        <div className="flex gap-2">
+    <div className="w-full max-w-full overflow-hidden">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Admin Dashboard</h1>
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search users..."
-            className="border rounded-md px-3 py-2 text-sm"
+            className="border rounded-md px-3 py-2 text-xs sm:text-sm"
           />
           <select
-            className="border rounded-md px-3 py-2 text-sm"
+            className="border rounded-md px-3 py-2 text-xs sm:text-sm"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
           >
@@ -85,65 +85,70 @@ const AdminDashboardPage = () => {
             <option value="approved">Approved</option>
             <option value="rejected">Rejected</option>
           </select>
-          <button onClick={fetchUsers} className="px-3 py-2 text-sm bg-gray-100 rounded-md">Refresh</button>
+          <button onClick={fetchUsers} className="px-3 py-2 text-xs sm:text-sm bg-gray-100 rounded-md">Refresh</button>
         </div>
       </div>
 
       {error && (
-        <div className="mb-4 p-3 rounded-md bg-red-50 text-red-700 text-sm">{error}</div>
+        <div className="mb-4 p-3 rounded-md bg-red-50 text-red-700 text-xs sm:text-sm">{error}</div>
       )}
 
       <div className="overflow-x-auto bg-white rounded-lg shadow">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-              <th className="px-6 py-3" />
+              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">Email</th>
+              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+              <th className="px-3 sm:px-6 py-3" />
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {loading ? (
               <tr>
-                <td colSpan="5" className="px-6 py-10 text-center text-gray-500">Loading users...</td>
+                <td colSpan="5" className="px-3 sm:px-6 py-8 sm:py-10 text-center text-gray-500 text-xs sm:text-sm">Loading users...</td>
               </tr>
             ) : filtered.length === 0 ? (
               <tr>
-                <td colSpan="5" className="px-6 py-10 text-center text-gray-500">No users found</td>
+                <td colSpan="5" className="px-3 sm:px-6 py-8 sm:py-10 text-center text-gray-500 text-xs sm:text-sm">No users found</td>
               </tr>
             ) : (
               filtered.map((u) => (
                 <tr key={u._id}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{u.name}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{u.email}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700">{u.role}</span>
+                  <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
+                    <div className="flex flex-col">
+                      <span className="font-medium">{u.name}</span>
+                      <span className="text-gray-500 sm:hidden">{u.email}</span>
+                    </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium ${badgeClass(u.approvalStatus)}`}>{u.approvalStatus}</span>
+                  <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-600 hidden sm:table-cell">{u.email}</td>
+                  <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700">{u.role}</span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
-                    <div className="flex gap-2 justify-end">
+                  <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm">
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${badgeClass(u.approvalStatus)}`}>{u.approvalStatus}</span>
+                  </td>
+                  <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-right text-xs sm:text-sm">
+                    <div className="flex flex-col sm:flex-row gap-1 sm:gap-2 justify-end">
                       <button
                         disabled={updatingId === u._id || u.approvalStatus === 'approved'}
                         onClick={() => updateApproval(u._id, 'approved')}
-                        className={`px-3 py-1.5 rounded-md text-xs font-medium text-white ${updatingId === u._id ? 'bg-green-300' : 'bg-green-600 hover:bg-green-700'} disabled:opacity-50`}
+                        className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-md text-xs font-medium text-white ${updatingId === u._id ? 'bg-green-300' : 'bg-green-600 hover:bg-green-700'} disabled:opacity-50`}
                       >
                         Approve
                       </button>
                       <button
                         disabled={updatingId === u._id || u.approvalStatus === 'pending'}
                         onClick={() => updateApproval(u._id, 'pending')}
-                        className={`px-3 py-1.5 rounded-md text-xs font-medium text-white ${updatingId === u._id ? 'bg-yellow-300' : 'bg-yellow-600 hover:bg-yellow-700'} disabled:opacity-50`}
+                        className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-md text-xs font-medium text-white ${updatingId === u._id ? 'bg-yellow-300' : 'bg-yellow-600 hover:bg-yellow-700'} disabled:opacity-50`}
                       >
                         Set Pending
                       </button>
                       <button
                         disabled={updatingId === u._id || u.approvalStatus === 'rejected'}
                         onClick={() => updateApproval(u._id, 'rejected')}
-                        className={`px-3 py-1.5 rounded-md text-xs font-medium text-white ${updatingId === u._id ? 'bg-red-300' : 'bg-red-600 hover:bg-red-700'} disabled:opacity-50`}
+                        className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-md text-xs font-medium text-white ${updatingId === u._id ? 'bg-red-300' : 'bg-red-600 hover:bg-red-700'} disabled:opacity-50`}
                       >
                         Reject
                       </button>

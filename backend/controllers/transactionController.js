@@ -609,15 +609,15 @@ const getOpeningBalance = async (req, res) => {
             }
           }
           openingBalance += amount;
-          console.log(`Debug: Transaction ${transaction.type} ${transaction.amount} -> ${amount}, running total: ${openingBalance}`);
+          // console.log(`Debug: Transaction ${transaction.type} ${transaction.amount} -> ${amount}, running total: ${openingBalance}`);
         }
-        console.log(`Debug: Final opening balance: ${openingBalance}`);
+        // console.log(`Debug: Final opening balance: ${openingBalance}`);
       }
     }
 
     // Also get total current balance for the party using manual calculation
     const allTransactions = await Transaction.find(filter);
-    console.log(`Debug: All transactions found:`, allTransactions.length);
+    // console.log(`Debug: All transactions found:`, allTransactions.length);
     
     let totalCurrentBalance = 0;
     for (const transaction of allTransactions) {
@@ -641,9 +641,9 @@ const getOpeningBalance = async (req, res) => {
       }
       totalCurrentBalance += amount;
     }
-    console.log(`Debug: Total current balance calculated: ${totalCurrentBalance}`);
+    // console.log(`Debug: Total current balance calculated: ${totalCurrentBalance}`);
 
-    console.log(`Debug: Final response - openingBalance=${openingBalance}, totalCurrentBalance=${totalCurrentBalance}`);
+    // console.log(`Debug: Final response - openingBalance=${openingBalance}, totalCurrentBalance=${totalCurrentBalance}`);
     res.json({
       openingBalance,
       totalCurrentBalance,

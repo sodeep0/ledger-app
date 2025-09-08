@@ -337,12 +337,12 @@ const PartiesPage = () => {
   return (
     <div>
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-4">Parties</h1>
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-3 sm:mb-4">Parties</h1>
         
         {/* Tabs */}
         <div className="border-b border-gray-200">
-          <nav className="-mb-px flex space-x-8">
+          <nav className="-mb-px flex space-x-4 sm:space-x-8">
             <button
               onClick={() => setActiveTab('suppliers')}
               className={`py-2 px-1 border-b-2 font-medium text-sm ${
@@ -368,11 +368,11 @@ const PartiesPage = () => {
       </div>
 
       {/* Search and Controls */}
-      <div className="mb-6 flex flex-col sm:flex-row gap-4">
+      <div className="mb-4 sm:mb-6 flex flex-col gap-3 sm:gap-4">
         <div className="flex-1">
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
             </div>
@@ -381,12 +381,12 @@ const PartiesPage = () => {
               placeholder="Search by name, contact, or balance..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+              className="block w-full pl-9 sm:pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 text-sm"
             />
           </div>
         </div>
         
-        <div className="flex gap-3">
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 sm:justify-between sm:items-center">
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
@@ -399,7 +399,7 @@ const PartiesPage = () => {
           
           <button
             onClick={handleAddNew}
-            className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors"
+            className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors text-sm sm:text-base sm:ml-auto"
           >
             Add {activeTab === 'suppliers' ? 'Supplier' : 'Customer'}
           </button>
@@ -409,18 +409,18 @@ const PartiesPage = () => {
       {/* Table */}
       <div className="bg-white shadow rounded-lg overflow-hidden">
         {data.length === 0 ? (
-          <div className="text-center py-12">
-            <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="text-center py-8 sm:py-12">
+            <svg className="mx-auto h-8 w-8 sm:h-12 sm:w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
             </svg>
             <h3 className="mt-2 text-sm font-medium text-gray-900">No {activeTab}</h3>
-            <p className="mt-1 text-sm text-gray-500">
+            <p className="mt-1 text-xs sm:text-sm text-gray-500">
               Get started by creating a new {activeTab.slice(0, -1)}.
             </p>
-            <div className="mt-6">
+            <div className="mt-4 sm:mt-6">
               <button
                 onClick={handleAddNew}
-                className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors"
+                className="inline-flex items-center px-3 sm:px-4 py-2 border border-transparent shadow-sm text-xs sm:text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors"
               >
                 Add {activeTab === 'suppliers' ? 'Supplier' : 'Customer'}
               </button>
@@ -431,19 +431,19 @@ const PartiesPage = () => {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Name
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">
                     Contact
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Balance
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">
                     Last Transaction
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
@@ -451,13 +451,14 @@ const PartiesPage = () => {
               <tbody className="bg-white divide-y divide-gray-200">
                 {data.map((party) => (
                   <tr key={party._id} className="hover:bg-gray-50 cursor-pointer" onClick={() => handlePartyClick(party)}>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{party.name}</div>
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
+                      <div className="text-xs sm:text-sm font-medium text-gray-900 truncate max-w-24 sm:max-w-none">{party.name}</div>
+                      <div className="text-xs text-gray-500 sm:hidden truncate max-w-24">{party.contactInfo}</div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{formatContact(party.contactInfo)}</div>
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap hidden sm:table-cell">
+                      <div className="text-xs sm:text-sm text-gray-900">{formatContact(party.contactInfo)}</div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
                       {(() => {
                         const bal = getComputedBalance(party, activeTab);
                         
@@ -465,11 +466,11 @@ const PartiesPage = () => {
                         if (bal === null) {
                           return (
                             <div className="inline-flex items-center px-2 py-1 text-xs text-gray-500">
-                              <svg className="animate-spin -ml-1 mr-2 h-3 w-3 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <svg className="animate-spin -ml-1 mr-1 sm:mr-2 h-3 w-3 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                               </svg>
-                              Calculating...
+                              <span className="hidden sm:inline">Calculating...</span>
                             </div>
                           );
                         }
@@ -485,20 +486,23 @@ const PartiesPage = () => {
                         );
                       })()}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {new Date(party.updatedAt).toLocaleDateString()}
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap hidden md:table-cell">
+                      <div className="text-xs sm:text-sm text-gray-500">
+                        {new Date(party.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })}
+                      </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap ">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation(); // Prevent row click when editing
-                          handleEdit(party);
-                        }}
-                        className="text-primary-600 hover:text-primary-900 mr-4 transition-colors"
-                      >
-                        Edit
-                      </button>
-                      
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-right text-xs sm:text-sm font-medium">
+                      <div className="flex flex-col sm:flex-row gap-1 sm:gap-0">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation(); // Prevent row click when editing
+                            handleEdit(party);
+                          }}
+                          className="text-red-600 hover:text-red-900 sm:mr-4"
+                        >
+                          Edit
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

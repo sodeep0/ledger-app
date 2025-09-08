@@ -11,7 +11,7 @@ const VerifyPage = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  const API = import.meta.env.VITE_API_URL || 'http://localhost:5001/api/';
+  const API = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
 
   const submit = async (e) => {
     e.preventDefault();

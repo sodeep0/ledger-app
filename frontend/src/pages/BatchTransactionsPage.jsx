@@ -233,19 +233,19 @@ const BatchTransactionsPage = () => {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Party</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mode</th>
-                <th className="px-6 py-3" />
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Party</th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mode</th>
+                <th className="px-3 py-3" />
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {rows.map((row, idx) => (
                 <tr key={idx}>
-                  <td className="px-6 py-2">
+                  <td className="px-3 py-2">
                     <input
                       type="date"
                       value={row.date}
@@ -253,7 +253,7 @@ const BatchTransactionsPage = () => {
                       className="w-full border border-secondary-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
                     />
                   </td>
-                  <td className="px-6 py-2">
+                  <td className="px-3 py-2">
                     <div className="relative" ref={(el) => { partyRowRefs.current[idx] = el; }}>
                       <div className="flex items-center">
                         <input
@@ -263,12 +263,12 @@ const BatchTransactionsPage = () => {
                           onChange={(e) => { updateRow(idx, { partyName: e.target.value, partyId: '', partyHighlightedIndex: 0 }); openPartyDropdown(idx); }}
                           onFocus={() => openPartyDropdown(idx)}
                           onKeyDown={(e) => handlePartyInputKeyDown(e, idx, row)}
-                          className={`flex-1 border rounded-l-md px-2 py-1 text-sm min-w-[12rem] focus:outline-none focus:ring-1 focus:ring-primary-500 ${row.partyId ? 'border-secondary-300' : (row.partyName ? 'border-error-500' : 'border-secondary-300')}`}
+                          className={`flex-1 border rounded-l-md px-2 py-1 text-sm min-w-[7rem] focus:outline-none focus:ring-1 focus:ring-primary-500 ${row.partyId ? 'border-secondary-300' : (row.partyName ? 'border-error-500' : 'border-secondary-300')}`}
                         />
                         <button
                           type="button"
                           onClick={() => (row.partyDropdownOpen ? closeAllDropdowns() : openPartyDropdown(idx))}
-                          className="px-2 py-1 border border-l-0 border-secondary-300 rounded-r-md text-sm bg-white hover:bg-secondary-50"
+                          className="px-2 py-1.5 border border-l-0 border-secondary-300 rounded-r-md text-sm bg-white hover:bg-secondary-50"
                         >
                           <svg className="w-4 h-4 text-secondary-600" viewBox="0 0 20 20" fill="currentColor">
                             <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clipRule="evenodd" />
@@ -295,7 +295,7 @@ const BatchTransactionsPage = () => {
                       )}
                     </div>
                   </td>
-                  <td className="px-6 py-2">
+                  <td className="px-3 py-2">
                     <input
                       type="text"
                       placeholder="Description (optional)"
@@ -304,7 +304,7 @@ const BatchTransactionsPage = () => {
                       className="w-full min-w-[9rem] border border-secondary-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
                     />
                   </td>
-                  <td className="px-6 py-2">
+                  <td className="px-3 py-2">
                     <select
                       value={row.type}
                       onChange={(e) => updateRow(idx, { type: e.target.value })}
@@ -325,7 +325,7 @@ const BatchTransactionsPage = () => {
                       )}
                     </select>
                   </td>
-                  <td className="px-6 py-2">
+                  <td className="px-3 py-2">
                     <input
                       type="number"
                       min="0"
@@ -336,21 +336,21 @@ const BatchTransactionsPage = () => {
                       className="w-32 border border-secondary-300 rounded-md px-2 py-1 text-sm text-right focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
                     />
                   </td>
-                  <td className="px-6 py-2">
+                  <td className="px-3 py-2">
                     <select
                       value={row.mode}
                       onChange={(e) => updateRow(idx, { mode: e.target.value })}
-                      className="w-full border border-secondary-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+                      className="w-full max-w-[6rem] border border-secondary-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
                     >
                       <option value="Cash">Cash</option>
                       <option value="Bank">Bank</option>
                       <option value="Online Payment">Online Payment</option>
                     </select>
                   </td>
-                  <td className="px-6 py-2 text-right">
+                  <td className="px-3 py-2 text-right">
                     <button
                       onClick={() => removeRow(idx)}
-                        className="text-secondary-600 hover:text-secondary-900 text-sm"
+                        className="text-secondary-600 hover:text-secondary-900 text-base font-medium"
                     >
                       Remove
                     </button>
@@ -358,7 +358,7 @@ const BatchTransactionsPage = () => {
                 </tr>
               ))}
               <tr>
-                <td colSpan={7} className="px-6 py-3">
+                <td colSpan={7} className="px-3 py-3">
                   <div className="flex justify-between">
                     <button
                       onClick={addRow}
@@ -393,5 +393,3 @@ const BatchTransactionsPage = () => {
 };
 
 export default BatchTransactionsPage;
-
-

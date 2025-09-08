@@ -29,9 +29,9 @@ const Input = forwardRef(({
   
   // Size styles
   const sizes = {
-    sm: 'px-3 py-1.5 text-sm',
+    sm: 'px-2 sm:px-3 py-1.5 text-xs sm:text-sm',
     md: 'px-3 py-2 text-sm',
-    lg: 'px-4 py-3 text-base',
+    lg: 'px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base',
   };
   
   // State styles
@@ -48,8 +48,8 @@ const Input = forwardRef(({
     <div className="relative">
       {/* Left Icon */}
       {leftIcon && (
-        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-          <div className="h-5 w-5 text-secondary-400">
+        <div className="absolute inset-y-0 left-0 pl-2 sm:pl-3 flex items-center pointer-events-none">
+          <div className="h-4 w-4 sm:h-5 sm:w-5 text-secondary-400">
             {leftIcon}
           </div>
         </div>
@@ -66,10 +66,10 @@ const Input = forwardRef(({
       {/* Right Icon */}
       {rightIcon && (
         <div 
-          className={`absolute inset-y-0 right-0 pr-3 flex items-center ${onRightIconClick ? 'cursor-pointer' : 'pointer-events-none'}`}
+          className={`absolute inset-y-0 right-0 pr-2 sm:pr-3 flex items-center ${onRightIconClick ? 'cursor-pointer' : 'pointer-events-none'}`}
           onClick={onRightIconClick}
         >
-          <div className="h-5 w-5 text-secondary-400 hover:text-secondary-600 transition-colors">
+          <div className="h-4 w-4 sm:h-5 sm:w-5 text-secondary-400 hover:text-secondary-600 transition-colors">
             {rightIcon}
           </div>
         </div>

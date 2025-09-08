@@ -2,7 +2,7 @@
 import axios from 'axios';
 
 // Prefer environment variable with fallback
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api/';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
 
 // Create a configured instance of axios
 const api = axios.create({

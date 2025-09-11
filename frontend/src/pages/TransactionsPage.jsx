@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, memo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { getTransactions, getSuppliers, getCustomers, createTransaction, updateTransaction, deleteTransaction } from '../services/apiService';
 import Modal from '../components/Modal';
 import AlertDialog from '../components/AlertDialog';
@@ -74,6 +75,7 @@ const TransactionRow = memo(({ transaction, onEdit, onDelete }) => (
 ));
 
 const TransactionsPage = () => {
+  const navigate = useNavigate();
   const [transactions, setTransactions] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [customers, setCustomers] = useState([]);
@@ -263,14 +265,14 @@ const TransactionsPage = () => {
               Export
             </button>
             <button
-              onClick={() => window.location.assign('/transactions/batch')}
+              onClick={() => navigate('/transactions/batch')}
               className="inline-flex items-center justify-center px-3 sm:px-4 py-2 border border-transparent rounded-md shadow-sm text-xs sm:text-sm font-medium text-white bg-gray-600 hover:bg-gray-700"
             >
               Batch Transactions
             </button>
             <button
               onClick={() => setIsModalOpen(true)}
-              className="inline-flex items-center justify-center px-3 sm:px-4 py-2 border border-transparent rounded-md shadow-sm text-xs sm:text-sm font-medium text-white bg-blue-500 hover:bg-blue-600"
+              className="inline-flex items-center justify-center px-3 sm:px-4 py-2 border border-transparent rounded-md shadow-sm text-xs sm:text-sm font-medium text-white bg-primary-600 hover:bg-primary-700"
             >
               Add Transaction
             </button>

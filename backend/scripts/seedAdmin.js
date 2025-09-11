@@ -22,9 +22,6 @@ const User = require('../models/User');
                 existing.role = 'admin';
                 existing.approvalStatus = 'approved';
                 await existing.save();
-                console.log('Existing user promoted to admin and approved');
-            } else {
-                console.log('Admin user already exists');
             }
             process.exit(0);
         }
@@ -37,7 +34,6 @@ const User = require('../models/User');
             approvalStatus: 'approved',
         });
         await admin.save();
-        console.log('Admin user created');
         process.exit(0);
     } catch (err) {
         console.error(err);

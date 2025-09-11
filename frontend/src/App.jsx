@@ -1,7 +1,7 @@
 // src/App.jsx
 import { Outlet } from 'react-router-dom';
 import Layout from './components/Layout';
-import { ErrorBoundary } from './components/ErrorBoundary';
+import ErrorBoundary from './components/ErrorBoundary';
 
 function App() {
   return (

@@ -79,7 +79,6 @@ async function main() {
     }
 
     const result = await Transaction.insertMany(docs);
-    console.log(`Inserted ${result.length} transactions for customer: ${customer.name} (${customer._id})`);
   } catch (err) {
     console.error('Error generating customer transactions:', err);
   } finally {

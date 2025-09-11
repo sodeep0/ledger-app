@@ -72,7 +72,7 @@ export const NAVIGATION_ITEMS = {
     { name: 'Admin', href: '/admin', icon: '🛡️' },
   ],
   USER: [
-    { name: 'Dashboard', href: '/', icon: '📊' },
+    { name: 'Dashboard', href: '/dashboard', icon: '📊' },
     { name: 'Parties', href: '/parties', icon: '👥' },
     { name: 'Transactions', href: '/transactions', icon: '📝' },
   ],

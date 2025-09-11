@@ -24,25 +24,22 @@ const generateMockTransactions = async () => {
   try {
     // Connect to MongoDB using the environment variable
     await mongoose.connect(mongoURI);
-    console.log('Successfully connected to MongoDB.');
 
     // --- MODIFICATION START ---
     // Define the specific user name to generate transactions for
     const targetUserName = 'Test Name';
 
     // Find the specific user by their name
-    console.log(`Searching for user with name: "${targetUserName}"`);
     const user = await User.findOne({ name: targetUserName });
 
     if (!user) {
-      console.log(`Error: User with name "${targetUserName}" not found. Please check the name or create the user.`);
+      console.error(`Error: User with name "${targetUserName}" not found. Please check the name or create the user.`);
       // We'll close the connection before exiting
       if (mongoose.connection.readyState === 1) {
         await mongoose.connection.close();
       }
       return;
     }
-    console.log(`Found user: ${user.name || user.email} (ID: ${user._id})`);
     // --- MODIFICATION END ---
 
 
@@ -51,7 +48,7 @@ const generateMockTransactions = async () => {
     const suppliers = await Supplier.find({ user: user._id });
 
     if (customers.length === 0 || suppliers.length === 0) {
-      console.log('No customers or suppliers found for this user. Please create some first.');
+      console.error('No customers or suppliers found for this user. Please create some first.');
        // We'll close the connection before exiting
       if (mongoose.connection.readyState === 1) {
         await mongoose.connection.close();
@@ -61,8 +58,6 @@ const generateMockTransactions = async () => {
 
     const transactionTypes = ['Sale', 'Purchase', 'Payment In', 'Payment Out'];
     const totalTransactions = 200;
-
-    console.log(`Starting to generate ${totalTransactions} transactions for user ${user._id}...`);
 
     // Generate and insert transactions one by one
     for (let i = 0; i < totalTransactions; i++) {
@@ -96,12 +91,10 @@ const generateMockTransactions = async () => {
       // Save the transaction to the database
       await newTransaction.save();
       
-      // Log progress and add a delay to avoid overloading the free-tier DB
-      console.log(`Created transaction ${i + 1} of ${totalTransactions}`);
+      // Add a delay to avoid overloading the free-tier DB
       await delay(50); // 50ms delay between each creation
     }
 
-    console.log(`\nSuccessfully generated and inserted ${totalTransactions} mock transactions.`);
     
   } catch (error) {
     console.error('Error during script execution:', error);
@@ -109,7 +102,6 @@ const generateMockTransactions = async () => {
     // Ensure the connection is closed
     if (mongoose.connection.readyState === 1) {
       await mongoose.connection.close();
-      console.log('MongoDB connection closed.');
     }
   }
 };

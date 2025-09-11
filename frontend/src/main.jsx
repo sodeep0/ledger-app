@@ -23,14 +23,12 @@ import VerifyPage from './pages/VerifyPage.jsx';
 import ForgotPasswordPage from './pages/ForgotPasswordPage.jsx';
 import VerifyResetPage from './pages/VerifyResetPage.jsx';
 import ResetPasswordPage from './pages/ResetPasswordPage.jsx';
-import { ErrorBoundary, ErrorPage } from './components/ErrorBoundary.jsx';
-
+import NotFoundPage from './pages/NotFoundPage.jsx';
 // Define the routes
 const router = createBrowserRouter([
   {
     path: '/',
     element: <App />,
-    errorElement: <ErrorPage />,
     children: [
       // Landing page (public)
       { index: true, element: <LandingPage /> },
@@ -101,16 +99,17 @@ const router = createBrowserRouter([
           </AdminRoute>
         ) },
       
-      // Catch-all route for undefined pages
-      { path: '*', element: <ErrorPage /> },
     ],
+  },
+  // 404 page outside the main app layout (no sidebar)
+  {
+    path: '*',
+    element: <NotFoundPage />,
   },
 ]);
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <ErrorBoundary>
-      <RouterProvider router={router} />
-    </ErrorBoundary>
+    <RouterProvider router={router} />
   </React.StrictMode>
 );

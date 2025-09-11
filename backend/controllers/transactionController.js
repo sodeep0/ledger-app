@@ -517,16 +517,6 @@ const getOpeningBalance = async (req, res) => {
 
     let openingBalance = 0;
     const total = await Transaction.countDocuments(filter);
-    console.log(`Debug: partyId=${partyId}, partyModel=${partyModel}, total=${total}, page=${page}, limit=${limit}, sortOrder=${sortOrder}, skip=${skip}`);
-    
-    // Debug: Let's see what transactions actually exist for this party
-    const sampleTransactions = await Transaction.find(filter).limit(5).sort({ date: -1, createdAt: -1, _id: -1 });
-    console.log(`Debug: Sample transactions for this party:`, sampleTransactions.map(t => ({ 
-      type: t.type, 
-      amount: t.amount, 
-      partyModel: t.partyModel,
-      date: t.date 
-    })));
     
     if (sortOrder === 'asc') {
       // For ascending: sum of all transactions BEFORE this page
@@ -536,12 +526,6 @@ const getOpeningBalance = async (req, res) => {
           .sort(sortSpec)
           .limit(skip);
         
-        console.log(`Debug: ASC - Opening transactions found:`, openingTransactions.length);
-        console.log(`Debug: ASC - Opening transactions:`, openingTransactions.map(t => ({ 
-          type: t.type, 
-          amount: t.amount, 
-          partyModel: t.partyModel 
-        })));
         
         // Calculate opening balance manually
         openingBalance = 0;
@@ -565,14 +549,11 @@ const getOpeningBalance = async (req, res) => {
             }
           }
           openingBalance += amount;
-          console.log(`Debug: ASC - Transaction ${transaction.type} ${transaction.amount} -> ${amount}, running total: ${openingBalance}`);
         }
-        console.log(`Debug: ASC - Final opening balance: ${openingBalance}`);
       }
     } else {
       // For descending: sum of all transactions AFTER this page
       const afterCount = Math.max(total - (skip + parseInt(limit)), 0);
-      console.log(`Debug: DESC - afterCount=${afterCount}`);
       if (afterCount > 0) {
         // Let's use a simpler approach - get the transactions directly and calculate manually
         const openingTransactions = await Transaction.find(filter)
@@ -580,13 +561,6 @@ const getOpeningBalance = async (req, res) => {
           .skip(skip + parseInt(limit))
           .limit(afterCount);
         
-        console.log(`Debug: Opening transactions found:`, openingTransactions.length);
-        console.log(`Debug: Opening transactions:`, openingTransactions.map(t => ({ 
-          type: t.type, 
-          amount: t.amount, 
-          partyModel: t.partyModel 
-        })));
-        
         // Calculate opening balance manually
         openingBalance = 0;
         for (const transaction of openingTransactions) {
@@ -609,15 +583,12 @@ const getOpeningBalance = async (req, res) => {
             }
           }
           openingBalance += amount;
-          // console.log(`Debug: Transaction ${transaction.type} ${transaction.amount} -> ${amount}, running total: ${openingBalance}`);
         }
-        // console.log(`Debug: Final opening balance: ${openingBalance}`);
       }
     }
 
     // Also get total current balance for the party using manual calculation
     const allTransactions = await Transaction.find(filter);
-    // console.log(`Debug: All transactions found:`, allTransactions.length);
     
     let totalCurrentBalance = 0;
     for (const transaction of allTransactions) {
@@ -641,9 +612,6 @@ const getOpeningBalance = async (req, res) => {
       }
       totalCurrentBalance += amount;
     }
-    // console.log(`Debug: Total current balance calculated: ${totalCurrentBalance}`);
-
-    // console.log(`Debug: Final response - openingBalance=${openingBalance}, totalCurrentBalance=${totalCurrentBalance}`);
     res.json({
       openingBalance,
       totalCurrentBalance,

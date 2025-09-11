@@ -34,7 +34,5 @@ app.use('/api/transactions', transactionRoutes);
 app.get('/', (req, res) => {
     res.status(200).send('Server is awake!');
   });
-app.listen(PORT,()=>{
-    console.log(`Server is running on port ${PORT}`);
-});
+app.listen(PORT);
 

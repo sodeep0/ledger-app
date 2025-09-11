@@ -18,7 +18,7 @@ const VerifyPage = () => {
     setError('');
     setSuccess('');
     try {
-      await axios.post(`${API}users/verify`, { email, code });
+      await axios.post(`${API}/users/verify`, { email, code });
       setSuccess('Verification successful. You can now login.');
       setTimeout(() => navigate('/login'), 800);
     } catch (err) {

@@ -3,25 +3,6 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { getSuppliers, getCustomers, getTransactions, getTransactionSummaries } from '../services/apiService';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
-// Validation helpers
-const isValidArray = (data) => Array.isArray(data) && data.length > 0;
-const isValidTransaction = (t) => {
-  return t && 
-    typeof t._id === 'string' && 
-    typeof t.amount === 'number' && 
-    !isNaN(new Date(t.date).getTime()) &&
-    typeof t.type === 'string';
-};
-const isValidParty = (p) => {
-  return p && typeof p._id === 'string' && typeof p.name === 'string';
-};
-const isValidSummaryData = (data) => {
-  return data && 
-    (data.summaries ? Array.isArray(data.summaries) : true) &&
-    (data.weeklySalesData ? Array.isArray(data.weeklySalesData) : true) &&
-    (data.topCustomers ? Array.isArray(data.topCustomers) : true) &&
-    (data.topSuppliers ? Array.isArray(data.topSuppliers) : true);
-};
 
 const DashboardPage = () => {
   const [suppliers, setSuppliers] = useState([]);
@@ -90,16 +71,11 @@ const DashboardPage = () => {
       setLoading(true);
       setError(null);
       
-      // Check cache first with validation
+      // Check cache first
       const cacheKey = `dashboard-${selectedPeriod}`;
       if (dataCache[cacheKey] && useSummaryEndpoint) {
         const cached = dataCache[cacheKey];
-        // Validate cached data before using
-        if (cached.timestamp && (Date.now() - cached.timestamp < 300000) && // 5 minutes cache
-            isValidArray(cached.suppliers) && 
-            isValidArray(cached.customers) && 
-            isValidArray(cached.transactions) &&
-            (cached.summaryData === null || isValidSummaryData(cached.summaryData))) {
+        if (cached.timestamp && (Date.now() - cached.timestamp < 300000)) { // 5 minutes cache
           setSuppliers(cached.suppliers);
           setCustomers(cached.customers);
           setTransactions(cached.transactions);
@@ -112,19 +88,14 @@ const DashboardPage = () => {
 
       setLoadingProgress({ current: 0, total: 4, message: 'Loading parties...' });
       
-      // Fetch suppliers and customers first with validation
+      // Fetch suppliers and customers first
       const [suppliersRes, customersRes] = await Promise.all([
         getSuppliers(),
         getCustomers(),
       ]);
       
-      // Validate API responses
-      const suppliersData = suppliersRes?.data && isValidArray(suppliersRes.data) 
-        ? suppliersRes.data.filter(isValidParty) 
-        : [];
-      const customersData = customersRes?.data && isValidArray(customersRes.data) 
-        ? customersRes.data.filter(isValidParty) 
-        : [];
+      const suppliersData = suppliersRes?.data || [];
+      const customersData = customersRes?.data || [];
       
       setSuppliers(suppliersData);
       setCustomers(customersData);
@@ -138,15 +109,11 @@ const DashboardPage = () => {
         // Use summary endpoint for aggregated data
         try {
           const summaryRes = await getTransactionSummaries(selectedPeriod);
-          if (summaryRes?.data && isValidSummaryData(summaryRes.data)) {
+          if (summaryRes?.data) {
             summaryData = summaryRes.data;
             setSummaryData(summaryData);
-          } else {
-            console.warn('Invalid summary data received:', summaryRes?.data);
-            summaryData = null;
           }
         } catch (summaryError) {
-          console.warn('Summary endpoint failed:', summaryError);
           summaryData = null;
         }
       }
@@ -160,9 +127,8 @@ const DashboardPage = () => {
         ...getDateRangeParams(selectedPeriod)
       });
       
-      // Validate transaction data
       const rawTransactions = transactionsRes?.data?.items || [];
-      transactionsData = rawTransactions.filter(isValidTransaction);
+      transactionsData = rawTransactions;
       
       // Sort transactions by date descending for recent transactions
       const sortedTransactions = transactionsData.sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -271,7 +237,7 @@ const DashboardPage = () => {
     
     // Sales data for the week - use summary data if available
     let salesData = [];
-    if (summaryData && summaryData.weeklySalesData && isValidArray(summaryData.weeklySalesData)) {
+    if (summaryData && summaryData.weeklySalesData) {
       // Use pre-calculated weekly sales data from summary endpoint
       salesData = summaryData.weeklySalesData.map(item => ({
         day: item.day,
@@ -290,8 +256,7 @@ const DashboardPage = () => {
       filteredTransactions
         .filter(t => {
           const transactionTime = new Date(t.date).getTime();
-          return !isNaN(transactionTime) && 
-                 transactionTime >= weekStartTime && 
+          return transactionTime >= weekStartTime && 
                  transactionTime <= weekEndTime && 
                  t.type === 'Sale';
         })
@@ -309,7 +274,7 @@ const DashboardPage = () => {
     // Top 5 customers or suppliers - use summary data if available
     let topParties = [];
     if (summaryData) {
-      if (chartToggle === 'customers' && summaryData.topCustomers && isValidArray(summaryData.topCustomers)) {
+      if (chartToggle === 'customers' && summaryData.topCustomers) {
         topParties = summaryData.topCustomers
           .map((customer, index) => ({
             name: customer.name && customer.name.length > 15 ? customer.name.substring(0, 15) + '...' : customer.name || 'Unknown',
@@ -317,7 +282,7 @@ const DashboardPage = () => {
             color: COLORS[index % COLORS.length]
           }))
           .filter(party => party.value > 0);
-      } else if (chartToggle === 'suppliers' && summaryData.topSuppliers && isValidArray(summaryData.topSuppliers)) {
+      } else if (chartToggle === 'suppliers' && summaryData.topSuppliers) {
         topParties = summaryData.topSuppliers
           .map((supplier, index) => ({
             name: supplier.name && supplier.name.length > 15 ? supplier.name.substring(0, 15) + '...' : supplier.name || 'Unknown',
@@ -345,7 +310,7 @@ const DashboardPage = () => {
           name: party.name && party.name.length > 15 ? party.name.substring(0, 15) + '...' : party.name || 'Unknown', 
           value: Number(partyMap.get(party._id)) || 0 
         }))
-        .filter(party => party.value > 0) // Only include parties with transactions
+        .filter(party => party.value > 0)
         .sort((a, b) => b.value - a.value)
         .slice(0, 5)
         .map((item, index) => ({ ...item, color: COLORS[index % COLORS.length] }));

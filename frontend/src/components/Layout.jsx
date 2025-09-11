@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import authService from '../services/authService';
+import { NAVIGATION_ITEMS } from '../utils/constants';
 
 const Layout = ({ children }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isDesktopSidebarCollapsed, setIsDesktopSidebarCollapsed] = useState(true);
   const location = useLocation();
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem('user'));
@@ -14,21 +16,10 @@ const Layout = ({ children }) => {
     navigate('/');
   };
 
-  const navigation = user?.role === 'admin'
-    ? [
-        { name: 'Admin', href: '/admin', icon: '🛡️' },
-      ]
-    : [
-        { name: 'Dashboard', href: '/dashboard', icon: '📊' },
-        { name: 'Parties', href: '/parties', icon: '👥' },
-        { name: 'Transactions', href: '/transactions', icon: '📝' },
-      ];
+  const navigation = user?.role === 'admin' ? NAVIGATION_ITEMS.ADMIN : NAVIGATION_ITEMS.USER;
 
   const isActive = (path) => {
-    if (path === '/dashboard') {
-      return location.pathname === '/dashboard';
-    }
-    return location.pathname.startsWith(path);
+    return location.pathname === path;
   };
 
   const isAuthPage = (
@@ -46,7 +37,9 @@ const Layout = ({ children }) => {
     <div className="min-h-screen bg-gray-50 w-full max-w-full overflow-x-hidden">
       {/* Sidebar */}
       {!isAuthPage && !isLandingPage && (
-      <div className={`fixed inset-y-0 left-0 z-50 w-56 sm:w-60 lg:w-64 bg-white shadow-lg transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} transition-transform duration-300 ease-in-out lg:translate-x-0`}>
+      <div className={`fixed inset-y-0 left-0 z-50 bg-white shadow-lg transform transition-all duration-300 ease-in-out ${
+        isSidebarOpen ? 'translate-x-0 w-56 sm:w-60' : '-translate-x-full w-56 sm:w-60'
+      } ${isDesktopSidebarCollapsed ? 'lg:-translate-x-full lg:w-64' : 'lg:translate-x-0 lg:w-64'}`}>
         <div className="flex items-center justify-between h-16 px-4 sm:px-6 lg:px-8 border-b">
           <div className="flex items-center min-w-0">
             <img 
@@ -54,7 +47,9 @@ const Layout = ({ children }) => {
               alt="LedgerPro Logo" 
               className="w-12 h-12 sm:w-16 sm:h-16 rounded-lg object-contain flex-shrink-0"
             />
-            <span className="ml-2 text-sm sm:text-base font-bold text-gray-900 truncate">LedgerPro</span>
+            <span className={`ml-2 text-sm sm:text-base font-bold text-gray-900 truncate transition-opacity duration-300 ${
+              isDesktopSidebarCollapsed ? 'lg:opacity-0 lg:w-0 lg:overflow-hidden' : 'lg:opacity-100'
+            }`}>LedgerPro</span>
           </div>
           <button
             onClick={() => setIsSidebarOpen(false)}
@@ -73,14 +68,17 @@ const Layout = ({ children }) => {
                 key={item.name}
                 to={item.href}
                 onClick={() => setIsSidebarOpen(false)}
-                className={`group flex items-center px-3 lg:px-4 py-3 lg:py-4 text-sm font-medium rounded-md transition-colors ${
+                className={`group flex items-center px-3 lg:px-4 py-3 lg:py-4 text-sm font-medium rounded-md transition-all duration-300 ${
                   isActive(item.href)
-                    ? 'bg-red-50 text-red-700 border-r-2 border-red-500'
+                    ? 'bg-primary-50 text-primary-700 border-r-2 border-primary-500'
                     : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                 }`}
+                title={isDesktopSidebarCollapsed ? item.name : ''}
               >
                 <span className="mr-3 lg:mr-4 text-lg flex-shrink-0">{item.icon}</span>
-                <span className="truncate">{item.name}</span>
+                <span className={`truncate transition-opacity duration-300 ${
+                  isDesktopSidebarCollapsed ? 'lg:opacity-0 lg:w-0 lg:overflow-hidden' : 'lg:opacity-100'
+                }`}>{item.name}</span>
               </Link>
             ))}
           </div>
@@ -94,7 +92,9 @@ const Layout = ({ children }) => {
                   {user?.name?.charAt(0) || 'U'}
                 </span>
               </div>
-              <div className="ml-3 min-w-0 flex-1">
+              <div className={`ml-3 min-w-0 flex-1 transition-opacity duration-300 ${
+                isDesktopSidebarCollapsed ? 'lg:opacity-0 lg:w-0 lg:overflow-hidden' : 'lg:opacity-100'
+              }`}>
                 <p className="text-sm font-medium text-gray-700 truncate">{user?.name || 'User'}</p>
               </div>
             </div>
@@ -113,7 +113,7 @@ const Layout = ({ children }) => {
       )}
 
       {/* Main content */}
-      <div className={isAuthPage || isLandingPage ? 'w-full' : 'w-full lg:pl-64'}>
+      <div className={isAuthPage || isLandingPage ? 'w-full' : `w-full transition-all duration-300 ${isDesktopSidebarCollapsed ? 'lg:pl-0' : 'lg:pl-64'}`}>
         {/* Top bar */}
         {!isAuthPage && !isLandingPage && (
         <div className="sticky top-0 z-30 bg-white shadow-sm border-b">
@@ -123,6 +123,16 @@ const Layout = ({ children }) => {
                 onClick={() => setIsSidebarOpen(true)}
                 className="lg:hidden p-1.5 sm:p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 flex-shrink-0"
                 aria-label="Open sidebar"
+              >
+                <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
+              <button
+                onClick={() => setIsDesktopSidebarCollapsed(!isDesktopSidebarCollapsed)}
+                className="hidden lg:block p-1.5 sm:p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 flex-shrink-0"
+                aria-label={isDesktopSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+                title={isDesktopSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
               >
                 <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />

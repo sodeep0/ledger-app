@@ -220,7 +220,7 @@ const LandingPage = () => {
                   </Button>
                 </Link>
                 <Link to="/login">
-                  <Button variant="outline" size="lg" className="w-full sm:w-auto border-white text-white hover:bg-white hover:text-primary-600">
+                  <Button variant="outline" size="lg" className="w-full sm:w-auto border-white text-black hover:bg-white hover:text-primary-600">
                     Sign In
                   </Button>
                 </Link>

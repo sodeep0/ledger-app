@@ -2,18 +2,6 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getTransactionsByParty, getPartyById, createTransaction, getOpeningBalance } from '../services/apiService';
 
-// Validation utilities
-const isValidDate = (dateString) => {
-  if (!dateString) return false;
-  const date = new Date(dateString);
-  return !isNaN(date.getTime());
-};
-
-const isValidNumericAmount = (value) => {
-  if (value === '' || value === null || value === undefined) return false;
-  const num = Number(value);
-  return !isNaN(num) && num >= 0 && isFinite(num);
-};
 
 const sanitizeCSVValue = (value) => {
   if (value === null || value === undefined) return '';
@@ -61,47 +49,37 @@ const PartyDetailsPage = () => {
       setError(null);
       setLoadMoreError(null);
       
-      // Fetch single party details efficiently with validation
+      // Fetch single party details
       const partyResponse = await getPartyById(partyType, partyId);
-      if (!partyResponse?.data || typeof partyResponse.data !== 'object') {
+      if (!partyResponse?.data) {
         setError('Invalid party data received from server');
         return;
       }
       
       const partyData = partyResponse.data;
-      if (!partyData.name || typeof partyData.name !== 'string') {
-        setError('Party name is missing or invalid');
-        return;
-      }
       
       setParty(partyData);
 
-      // Fetch newest 10 transactions (descending) with validation
+      // Fetch newest 10 transactions (descending)
       const transactionsResponse = await getTransactionsByParty(partyId, {
         page: 1,
         limit: 10,
         sortOrder: 'desc',
       });
       
-      if (!transactionsResponse?.data || typeof transactionsResponse.data !== 'object') {
+      if (!transactionsResponse?.data) {
         setError('Invalid transactions data received from server');
         return;
       }
       
       const { items, hasNextPage, page, total } = transactionsResponse.data;
       
-      // Validate items is an array
-      if (!Array.isArray(items)) {
-        setError('Transactions data is not in expected format');
-        return;
-      }
-      
       setTransactions(items);
       setTxPage(Number(page) || 1);
       setTxHasNext(Boolean(hasNextPage));
       setTotalTransactions(Number(total) || items.length);
 
-      // Fetch opening balance separately using the dedicated API with validation
+      // Fetch opening balance separately using the dedicated API
       const partyModel = partyType === 'supplier' ? 'Supplier' : 'Customer';
       const openingBalanceResponse = await getOpeningBalance(partyId, partyModel, {
         page: 1,
@@ -109,24 +87,15 @@ const PartyDetailsPage = () => {
         sortOrder: 'desc'
       });
       
-      if (!openingBalanceResponse?.data || typeof openingBalanceResponse.data !== 'object') {
+      if (!openingBalanceResponse?.data) {
         setError('Invalid opening balance data received from server');
         return;
       }
       
       const { openingBalance, totalCurrentBalance } = openingBalanceResponse.data;
       
-      // Validate numeric values
-      const validOpeningBalance = Number(openingBalance);
-      const validTotalBalance = Number(totalCurrentBalance);
-      
-      if (isNaN(validOpeningBalance) || isNaN(validTotalBalance)) {
-        setError('Invalid balance values received from server');
-        return;
-      }
-      
-      setServerOpeningBalance(validOpeningBalance);
-      setFullCurrentBalance(validTotalBalance);
+      setServerOpeningBalance(Number(openingBalance) || 0);
+      setFullCurrentBalance(Number(totalCurrentBalance) || 0);
     } catch (err) {
       const errorMessage = err.response?.data?.message || err.message || 'Failed to fetch data. Please try again later.';
       setError(errorMessage);
@@ -147,17 +116,7 @@ const PartyDetailsPage = () => {
         sortOrder: 'desc',
       });
       
-      // Validate response structure
-      if (!res?.data || typeof res.data !== 'object') {
-        throw new Error('Invalid response structure from server');
-      }
-      
       const { items, hasNextPage, total } = res.data;
-      
-      // Validate items is an array
-      if (!Array.isArray(items)) {
-        throw new Error('Invalid transactions data format');
-      }
       
       setTransactions((prev) => [...prev, ...items]);
       setTxPage(nextPage);
@@ -167,7 +126,7 @@ const PartyDetailsPage = () => {
         setTotalTransactions(total);
       }
 
-      // Refresh opening balance for the new page with validation
+      // Refresh opening balance for the new page
       const partyModel = partyType === 'supplier' ? 'Supplier' : 'Customer';
       const openingBalanceResponse = await getOpeningBalance(partyId, partyModel, {
         page: nextPage,
@@ -175,22 +134,14 @@ const PartyDetailsPage = () => {
         sortOrder: 'desc'
       });
       
-      if (!openingBalanceResponse?.data || typeof openingBalanceResponse.data !== 'object') {
+      if (!openingBalanceResponse?.data) {
         throw new Error('Invalid opening balance response');
       }
       
       const { openingBalance, totalCurrentBalance } = openingBalanceResponse.data;
       
-      // Validate numeric values
-      const validOpeningBalance = Number(openingBalance);
-      const validTotalBalance = Number(totalCurrentBalance);
-      
-      if (isNaN(validOpeningBalance) || isNaN(validTotalBalance)) {
-        throw new Error('Invalid balance values in response');
-      }
-      
-      setServerOpeningBalance(validOpeningBalance);
-      setFullCurrentBalance(validTotalBalance);
+      setServerOpeningBalance(Number(openingBalance) || 0);
+      setFullCurrentBalance(Number(totalCurrentBalance) || 0);
     } catch (e) {
       const errorMessage = e.response?.data?.message || e.message || 'Failed to load more transactions';
       setLoadMoreError(errorMessage);
@@ -203,10 +154,6 @@ const PartyDetailsPage = () => {
   const { filteredWithBalances, currentBalance, openingBalance } = useMemo(() => {
     // Build running balance map starting from serverOpeningBalance and iterating loaded items in true chronological order
     const chronologicalAll = [...transactions]
-      .filter(transaction => {
-        // Filter out transactions with invalid dates
-        return isValidDate(transaction.date);
-      })
       .sort((a, b) => {
         const dateA = new Date(a.date);
         const dateB = new Date(b.date);
@@ -225,12 +172,7 @@ const PartyDetailsPage = () => {
     const idToBalance = new Map();
     
     for (const transaction of chronologicalAll) {
-      // Ensure amount is numeric and valid
       const amount = Number(transaction.amount) || 0;
-      if (isNaN(amount) || !isFinite(amount)) {
-        console.warn('Invalid transaction amount:', transaction.amount, 'for transaction:', transaction._id);
-        continue;
-      }
       
       let balanceChange = 0;
       if (partyType === 'supplier') {
@@ -259,7 +201,7 @@ const PartyDetailsPage = () => {
       transaction.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       transaction.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
       transaction.mode?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (transaction.amount && transaction.amount.toString().includes(searchTerm))
+      transaction.amount?.toString().includes(searchTerm)
     );
 
     // Sort for display according to current sort settings
@@ -275,8 +217,7 @@ const PartyDetailsPage = () => {
         const c = createdA.getTime() - createdB.getTime();
         if (c !== 0) return sortOrder === 'asc' ? c : -c;
         
-        const i = (a._id || '').localeCompare(b._id || '');
-        return sortOrder === 'asc' ? i : -i;
+        return (a._id || '').localeCompare(b._id || '');
       }
       let aValue, bValue;
       switch (sortBy) {
@@ -292,7 +233,6 @@ const PartyDetailsPage = () => {
           aValue = new Date(a.date).getTime();
           bValue = new Date(b.date).getTime();
       }
-      if (aValue === bValue) return 0;
       return sortOrder === 'asc' ? (aValue > bValue ? 1 : -1) : (aValue < bValue ? 1 : -1);
     });
 
@@ -365,14 +305,8 @@ const PartyDetailsPage = () => {
     const headers = ['Date', 'Description', dynamicPurchaseSaleHeader, dynamicPaymentHeader, 'Mode', 'Balance'];
 
     const rows = filteredWithBalances.map(t => {
-      // Validate date before processing
-      if (!isValidDate(t.date)) {
-        console.warn('Invalid date in transaction:', t._id);
-        return null;
-      }
-      
       const datePart = new Date(t.date).toLocaleDateString();
-      const timePart = t.createdAt && isValidDate(t.createdAt) 
+      const timePart = t.createdAt 
         ? new Date(t.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
         : '';
       const dateWithTime = timePart ? `${datePart} ${timePart}` : datePart;
@@ -393,7 +327,7 @@ const PartyDetailsPage = () => {
       return [dateWithTime, descriptionCol, purchaseSaleCol, paymentCol, modeCol, balanceCol]
         .map(csvEscape)
         .join(',');
-    }).filter(row => row !== null); // Remove null rows from invalid dates
+    });
 
     const csvContent = [headers.join(','), ...rows].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -417,17 +351,12 @@ const PartyDetailsPage = () => {
       setSubmitError(null);
       setSubmitting(true);
       
-      // Validate date
-      if (!newDate || !isValidDate(newDate)) {
-        throw new Error('Please enter a valid date.');
-      }
-      
       // Validate amounts
       const purchaseSaleAmount = newPurchaseSaleAmount.trim();
       const paymentAmount = newPaymentAmount.trim();
       
-      const hasPurchaseSale = purchaseSaleAmount !== '' && isValidNumericAmount(purchaseSaleAmount);
-      const hasPayment = paymentAmount !== '' && isValidNumericAmount(paymentAmount);
+      const hasPurchaseSale = purchaseSaleAmount !== '' && !isNaN(Number(purchaseSaleAmount));
+      const hasPayment = paymentAmount !== '' && !isNaN(Number(paymentAmount));
       
       if (hasPurchaseSale && hasPayment) {
         throw new Error('Enter amount in only one column.');
@@ -436,14 +365,13 @@ const PartyDetailsPage = () => {
         throw new Error('Please enter a valid amount greater than 0.');
       }
       
-      // Validate amount values
       const purchaseSaleNum = hasPurchaseSale ? Number(purchaseSaleAmount) : 0;
       const paymentNum = hasPayment ? Number(paymentAmount) : 0;
       
-      if (hasPurchaseSale && (purchaseSaleNum <= 0 || !isFinite(purchaseSaleNum))) {
+      if (hasPurchaseSale && purchaseSaleNum <= 0) {
         throw new Error('Purchase/Sale amount must be a positive number.');
       }
-      if (hasPayment && (paymentNum <= 0 || !isFinite(paymentNum))) {
+      if (hasPayment && paymentNum <= 0) {
         throw new Error('Payment amount must be a positive number.');
       }
 
@@ -453,10 +381,6 @@ const PartyDetailsPage = () => {
         ? (partyType === 'supplier' ? 'Purchase' : 'Sale')
         : (partyType === 'supplier' ? 'Payment Out' : 'Payment In');
 
-      // Validate partyId
-      if (!partyId || typeof partyId !== 'string') {
-        throw new Error('Invalid party ID.');
-      }
 
       await createTransaction({
         date: new Date(newDate),

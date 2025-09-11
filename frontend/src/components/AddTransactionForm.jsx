@@ -7,8 +7,8 @@ import { createTransaction, updateTransaction } from '../services/apiService';
 // NEW: A toggle to switch between Supplier and Customer contexts
 const PartyToggle = ({ selectedModel, onToggle }) => {
   const baseClasses = "w-1/2 py-2.5 text-sm font-medium leading-5 text-center transition-colors duration-150 ease-in-out focus:outline-none";
-  const activeClasses = "bg-indigo-600 text-white shadow";
-  const inactiveClasses = "bg-gray-100 text-indigo-500 hover:bg-gray-200";
+  const activeClasses = "bg-primary-600 text-white shadow";
+  const inactiveClasses = "bg-gray-100 text-primary-500 hover:bg-gray-200";
 
   return (
     <div>
@@ -51,7 +51,7 @@ const FormField = ({ label, name, error, children }) => (
     <div className="relative">
       {children}
     </div>
-    {error && <p className="mt-1.5 text-xs text-red-600">{error}</p>}
+    {error && <p className="mt-1.5 text-xs text-error-600">{error}</p>}
   </div>
 );
 
@@ -60,7 +60,7 @@ const SubmitButton = ({ isSubmitting, initialData }) => (
   <button
     type="submit"
     disabled={isSubmitting}
-    className="inline-flex items-center justify-center w-full px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed"
+    className="inline-flex items-center justify-center w-full px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md shadow-sm hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-60 disabled:cursor-not-allowed"
   >
     {isSubmitting ? (
       <>
@@ -217,8 +217,8 @@ const AddTransactionForm = ({ suppliers, customers, onSuccess, initialData }) =>
   };
 
   const inputClasses = (name) =>
-    `w-full pl-10 pr-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 sm:text-sm ${
-      errors[name] ? 'border-red-400' : 'border-gray-300'
+    `w-full pl-10 pr-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 sm:text-sm ${
+      errors[name] ? 'border-error-400' : 'border-gray-300'
     }`;
 
   // --- Render ---
@@ -287,10 +287,10 @@ const AddTransactionForm = ({ suppliers, customers, onSuccess, initialData }) =>
         </div>
 
         <FormField label="Description" name="description" error={errors.description}>
-          <textarea name="description" value={state.description} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 sm:text-sm" rows="3" placeholder="Add a note or details..." />
+          <textarea name="description" value={state.description} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 sm:text-sm" rows="3" placeholder="Add a note or details..." />
         </FormField>
         
-        {errors.form && <p className="text-sm text-red-600 text-center">{errors.form}</p>}
+        {errors.form && <p className="text-sm text-error-600 text-center">{errors.form}</p>}
         
         <div className="pt-4">
           <SubmitButton isSubmitting={isSubmitting} initialData={initialData} />

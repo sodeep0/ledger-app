@@ -164,7 +164,7 @@ const PartiesPage = () => {
           const transactions = res?.data?.items || [];
           
           // Calculate balance using utility function for consistency
-          const balance = calculateBalance(transactions, partyType);
+          const balance = calculateBalance(transactions, partyType === 'suppliers' ? 'supplier' : 'customer');
           
             return { key, total: balance };
         }));
